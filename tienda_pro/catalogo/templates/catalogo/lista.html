@@ -1,0 +1,30 @@
+
+<form method="GET" action="{% url 'lista' %}" style="margin-bottom: 20px;">
+    <input type="text" name="buscar" placeholder="Buscar productos..." value="{{ request.GET.buscar }}">
+    <button type="submit">Buscar</button>
+    <a href="{% url 'lista' %}">Limpiar</a>
+</form>
+
+
+{% block content %}
+    <h1>Nuestro Catálogo</h1>
+    <div class="productos-grid">
+        {% for producto in mis_productos %}
+            <div class="producto-card">
+                {% if producto.imagen %}
+                <img src="{{ producto.imagen.url }}" alt="{{ producto.name }}" style="width: 200px;">
+                {% else %}
+                <img src="https://via.placeholder.com/200" alt="Sin imagen">
+                {% endif %}
+                <h3>{{ producto.nombre }}</h3>
+                <p>Precio: ${{ producto.precio }}</p>
+                <p>Categoría: {{ producto.categoria.nombre }}</p>
+                <button>Ver detalles</button>
+
+            </div>
+        {% empty %}
+            <p>No hay productos disponibles por ahora.</p>
+        {% endfor %}
+    </div>
+
+{% endblock %}
