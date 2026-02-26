@@ -1,2 +1,3 @@
 # tienda_pro
-Proyecto guiado po IA gemini sobre una tienda
+Proyecto guiado por IA gemini sobre una tienda
+Ver paso a paso en log chat con gemini
