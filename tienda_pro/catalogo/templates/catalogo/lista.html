@@ -1,30 +1,117 @@
-
-<form method="GET" action="{% url 'lista' %}" style="margin-bottom: 20px;">
-    <input type="text" name="buscar" placeholder="Buscar productos..." value="{{ request.GET.buscar }}">
-    <button type="submit">Buscar</button>
-    <a href="{% url 'lista' %}">Limpiar</a>
-</form>
-
-
+{% load static %} <!DOCTYPE html>
+<html>
+<head>
+    <title>Mi Catálogo</title>
+    <link rel="stylesheet" href="{% static 'catalogo/css/estilos.css' %}">
+</head>
+<body>
 {% block content %}
-    <h1>Nuestro Catálogo</h1>
-    <div class="productos-grid">
-        {% for producto in mis_productos %}
-            <div class="producto-card">
-                {% if producto.imagen %}
-                <img src="{{ producto.imagen.url }}" alt="{{ producto.name }}" style="width: 200px;">
-                {% else %}
-                <img src="https://via.placeholder.com/200" alt="Sin imagen">
-                {% endif %}
-                <h3>{{ producto.nombre }}</h3>
-                <p>Precio: ${{ producto.precio }}</p>
-                <p>Categoría: {{ producto.categoria.nombre }}</p>
-                <button>Ver detalles</button>
+<div class="layout-fijo">
 
-            </div>
-        {% empty %}
-            <p>No hay productos disponibles por ahora.</p>
-        {% endfor %}
-    </div>
+    <header class="seccion-busqueda">
+        <form method="GET" class="filtros-superiores"> 
+            <input type="text" name="buscar" value="{{ request.GET.buscar }}" placeholder="Buscar productos...">
+
+            {% if request.GET.categoria %}
+                <input type="hidden" name="categoria" value="{{ request.GET.categoria }}">
+            {% endif %}
+
+            <select name="orden" onchange="this.form.submit()">
+                <option value="">Ordenar por: Recientes</option>
+                <option value="barato" {% if request.GET.orden == 'barato' %}selected{% endif %}>Precio: Menor a Mayor</option>></option>
+                <option value="caro" {% if request.GET.orden == 'caro'%}selected{% endif %}>Precio: Mayor a Menor</option>
+            </select>
+
+            <button type="submit">Filtrar</button>
+        </form>
+
+
+<!--         
+        <form method="GET" action="{% url 'lista' %}" style="margin-bottom: 20px;">
+            <input type="text" name="buscar" placeholder="Buscar productos..." value="{{ request.GET.buscar }}">
+            <button type="submit">Buscar</button>
+            <a href="{% url 'lista' %}">Limpiar</a>
+        </form> -->
+    </header>
+    <h1>Nuestro Catálogo</h1>
+    <main class="seccion-productos">
+        <aside class="sidebar-categorias">
+            <h3>Categorias</h3>
+            <ul>
+                <li><a href="{% url 'lista' %}">Todas</a></li>
+                {% for cat in categorias %}
+                    <li>
+                        <a href="?categoria={{ cat.id }}{% if request.GET.buscar %}&buscar={{ request.GET.buscar }}{% endif %}{% if request.GET.orden %}&orden={{ request.GET.orden }}{% endif %}" 
+                        class="{% if request.GET.categoria == cat.id|stringformat:'i' %}activa{% endif %}">
+                            {{ cat.nombre }}
+                        </a>
+                    </li>
+                {% endfor %}
+            </ul>
+        </aside>
+        
+        <section class="contenido-grilla">
+            <!-- <div class="productos-grid"> -->
+                <div class="contenedor-grid">
+                    {% for producto in mis_productos %}
+                        <div class="producto-card">
+                            {% if producto.imagen %}
+                                <a href="{% url 'detalle' producto.id %}">
+                                <img src="{{ producto.imagen.url }}" alt="{{ producto.name }}" style="width: 200px;">
+                                </a>
+                            {% else %}
+                                <img src="{% static 'catalogo/img/no-foto.jpeg' %}" alt="Sin imagen">
+                            {% endif %}
+                            <a href="{% url 'detalle' producto.id %}">
+                                <h3 class="nombre-producto">{{ producto.nombre }}</h3>
+                            </a>
+                            <p class="precio">Precio: ${{ producto.precio }}</p>
+                            <p class="categoria">Categoría: {{ producto.categoria.nombre }}</p>
+                            <a href="{% url 'detalle' producto.id %}" class="btn-detalle">Ver detalle</a>
+
+                        </div>
+                    {% empty %}
+                        <p>No hay productos disponibles por ahora.</p>
+                    {% endfor %}
+                </div>
+            <!-- </div> -->
+        </section>        
+
+    </main>
+
+    <footer class="seccion-paginacion">
+        <div class="paginacion">
+            <span class="paso-links">
+                {% if page_obj.has_previous %}
+                    <a href="?page=1{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}{% if request.GET.buscar %}&buscar={{ request.GET.buscar }}{% endif %}{% if request.GET.orden %}&orden={{ request.GET.orden }}{% endif %}">&laquo; Primera</a>
+                    
+                    <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}{% if request.GET.buscar %}&buscar={{ request.GET.buscar }}{% endif %}{% if request.GET.orden %}&orden={{ request.GET.orden }}{% endif %}">Anterior</a>
+                {% endif %}
+
+                <span class="actual">
+                    Página {{ page_obj.number }} de {{ page_obj.paginator.num_pages }}
+                </span>
+
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}{% if request.GET.buscar %}&buscar={{ request.GET.buscar }}{% endif %}{% if request.GET.orden %}&orden={{ request.GET.orden }}{% endif %}">Siguiente</a>
+                    
+                    <a href="?page={{ page_obj.paginator.num_pages }}{% if request.GET.categoria %}&categoria={{ request.GET.categoria }}{% endif %}{% if request.GET.buscar %}&buscar={{ request.GET.buscar }}{% endif %}{% if request.GET.orden %}&orden={{ request.GET.orden }}{% endif %}">Última &raquo;</a>
+                {% endif %}
+
+            </span>
+        </div>
+    </footer>
+</div>
+
+
 
 {% endblock %}
+
+
+
+</body>
+
+
+</html>
+
+

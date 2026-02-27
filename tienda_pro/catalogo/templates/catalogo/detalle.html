@@ -1,0 +1,44 @@
+{% load static %} <!DOCTYPE html>
+<html>
+<head>
+    <title>Mi Catálogo</title>
+    <link rel="stylesheet" href="{% static 'catalogo/css/estilos.css' %}">
+</head>
+<body>
+
+
+
+
+{% block contenido %}
+<div class="detalle-producto">
+    <div class="imagen-seccion">
+        {% if producto.imagen %}
+            <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" style="max-width: 400px;"
+        {% else %}            
+            <img src="{% static 'catalogo/img/no-foto.jpeg' %}" alt="Sin imagen">
+        {% endif %}
+    </div>
+</div>
+
+<div class="info-seccion">
+    <h1>{{ producto.nombre }}</h1>
+    <p class="categoria">Categoria: {{ producto.categoria.nombre }}</p>
+    <p class="precio">Precio: $ {{ producto.precio }}</p>
+
+    {% if producto.stock < 5 and producto.stock > 0 %}
+        <p style="color: red; font-weight:bold;"> !!Solo quedan {{ producto.stock }} unidades!!</p>
+    {% elif producto.stock == 0 %}
+        <p style="color: gray;"> Agotado temporalmente</p>
+    {% else %}
+        <p style="color: green">Stock disponible: {{ producto.stock }}</p>
+    {% endif %}
+
+    <hr>
+    <h3>Descripción</h3>
+    <p>{{ producto.descripcion }}</p>
+
+    <button class="btn-comprar">Añadir al carrito</button>
+    <br>
+    <a href="{% url 'lista' %}">Volver al catálogo</a>
+</div>
+{% endblock %}
