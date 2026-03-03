@@ -1,39 +1,41 @@
-{% load static %} <!DOCTYPE html>
-<html>
-<head>
-    <title>Mi Catálogo</title>
-    <link rel="stylesheet" href="{% static 'catalogo/css/estilos.css' %}">
-</head>
-<body>
+{% extends 'catalogo/base.html' %}
+{% load static %}
+
+{% block title %}Mi Catálogo{% endblock %}
+
 {% block content %}
 <div class="layout-fijo">
 
     <header class="seccion-busqueda">
         <form method="GET" class="filtros-superiores"> 
-            <input type="text" name="buscar" value="{{ request.GET.buscar }}" placeholder="Buscar productos...">
+            <div class="buscador">
+                <input type="text" name="buscar" value="{{ request.GET.buscar }}" placeholder="Buscar productos...">
+            </div>
 
             {% if request.GET.categoria %}
                 <input type="hidden" name="categoria" value="{{ request.GET.categoria }}">
             {% endif %}
 
-            <select name="orden" onchange="this.form.submit()">
-                <option value="">Ordenar por: Recientes</option>
-                <option value="barato" {% if request.GET.orden == 'barato' %}selected{% endif %}>Precio: Menor a Mayor</option>></option>
-                <option value="caro" {% if request.GET.orden == 'caro'%}selected{% endif %}>Precio: Mayor a Menor</option>
-            </select>
-
-            <button type="submit">Filtrar</button>
+            <div class="ordenador">
+                <label for="orden">Ordenar por:</label>
+                <select name="orden" id="orden" onchange="this.form.submit()">
+                    <option value="">Más recientes</option>
+                    <option value="barato" {% if request.GET.orden == 'barato' %}selected{% endif %}>Precio: Menor a Mayor</option>
+                    <option value="caro" {% if request.GET.orden == 'caro'%}selected{% endif %}>Precio: Mayor a Menor</option>
+                </select>
+            </div>
         </form>
-
-
-<!--         
-        <form method="GET" action="{% url 'lista' %}" style="margin-bottom: 20px;">
-            <input type="text" name="buscar" placeholder="Buscar productos..." value="{{ request.GET.buscar }}">
-            <button type="submit">Buscar</button>
-            <a href="{% url 'lista' %}">Limpiar</a>
-        </form> -->
     </header>
-    <h1>Nuestro Catálogo</h1>
+    
+    <div class="encabezado-catalogo">
+        <h1>Nuestro Catálogo</h1>
+        {% if categoria_seleccionada %}
+            <a href="{% url 'lista' %}" class="filtro-activo">
+                {{ categoria_seleccionada.nombre }} ✕
+            </a>
+        {% endif %}
+    </div>
+    
     <main class="seccion-productos">
         <aside class="sidebar-categorias">
             <h3>Categorias</h3>
@@ -51,30 +53,28 @@
         </aside>
         
         <section class="contenido-grilla">
-            <!-- <div class="productos-grid"> -->
-                <div class="contenedor-grid">
-                    {% for producto in mis_productos %}
-                        <div class="producto-card">
-                            {% if producto.imagen %}
-                                <a href="{% url 'detalle' producto.id %}">
-                                <img src="{{ producto.imagen.url }}" alt="{{ producto.name }}" style="width: 200px;">
-                                </a>
-                            {% else %}
-                                <img src="{% static 'catalogo/img/no-foto.jpeg' %}" alt="Sin imagen">
-                            {% endif %}
+            <div class="contenedor-grid">
+                {% for producto in mis_productos %}
+                    <div class="producto-card">
+                        {% if producto.imagen %}
                             <a href="{% url 'detalle' producto.id %}">
-                                <h3 class="nombre-producto">{{ producto.nombre }}</h3>
+                            <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" style="width: 200px;">
                             </a>
-                            <p class="precio">Precio: ${{ producto.precio }}</p>
-                            <p class="categoria">Categoría: {{ producto.categoria.nombre }}</p>
-                            <a href="{% url 'detalle' producto.id %}" class="btn-detalle">Ver detalle</a>
+                        {% else %}
+                            <img src="{% static 'catalogo/img/no-foto.jpeg' %}" alt="Sin imagen">
+                        {% endif %}
+                        <a href="{% url 'detalle' producto.id %}">
+                            <h3 class="nombre-producto">{{ producto.nombre }}</h3>
+                        </a>
+                        <p class="precio">Precio: ${{ producto.precio }}</p>
+                        <p class="categoria">Categoría: {{ producto.categoria.nombre }}</p>
+                        <a href="{% url 'detalle' producto.id %}" class="btn-detalle">Ver detalle</a>
 
-                        </div>
-                    {% empty %}
-                        <p>No hay productos disponibles por ahora.</p>
-                    {% endfor %}
-                </div>
-            <!-- </div> -->
+                    </div>
+                {% empty %}
+                    <p>No hay productos disponibles por ahora.</p>
+                {% endfor %}
+            </div>
         </section>        
 
     </main>
@@ -102,16 +102,4 @@
         </div>
     </footer>
 </div>
-
-
-
 {% endblock %}
-
-
-
-</body>
-
-
-</html>
-
-

@@ -17,4 +17,11 @@ class Producto(models.Model):
     categoria = models.ForeignKey(Categoria, on_delete=models.CASCADE, related_name='productos')
     def __str__(self):
         return self.nombre
+
+class ImagenProducto(models.Model):
+    producto = models.ForeignKey(Producto, related_name='imagenes', on_delete=models.CASCADE)
+    imagen = models.ImageField(upload_to='productos/galeria/')
+    
+    class Meta:
+        ordering = ['id']
     

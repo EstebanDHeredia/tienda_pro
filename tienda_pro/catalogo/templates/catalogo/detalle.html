@@ -1,44 +1,110 @@
-{% load static %} <!DOCTYPE html>
-<html>
-<head>
-    <title>Mi Catálogo</title>
-    <link rel="stylesheet" href="{% static 'catalogo/css/estilos.css' %}">
-</head>
-<body>
+{% extends 'catalogo/base.html' %}
+{% load static %}
+
+{% block title %}{{ producto.nombre }} - Mi Tienda{% endblock %}
+
+{% block content %}
+<div class="layout-detalle">
+    <div class="contenedor-detalle">
+        <div class="tarjeta-detalle">
+            
+            <div class="tarjeta-producto">
+                <div class="detalle-imagen">
+                {% if producto.imagen %}
+                    <img id="imagen-principal" src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}">
+                {% else %}
+                    <img id="imagen-principal" src="{% static 'catalogo/img/no-foto.jpeg' %}" alt="No disponible">
+                {% endif %}
+                
+                <div class="galeria-miniaturas">
+                    {% if producto.imagen %}
+                    <button class="thumb" onclick="cambiarImagen('{{ producto.imagen.url }}')">
+                        <img src="{{ producto.imagen.url }}" alt="Principal">
+                    </button>
+                    {% endif %}
+                    {% for img in galeria %}
+                    <button class="thumb" onclick="cambiarImagen('{{ img.imagen.url }}')">
+                        <img src="{{ img.imagen.url }}" alt="Vista previa">
+                    </button>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <div class="detalle-info">
+                <nav class="migas-pan">
+                    <a href="{% url 'lista' %}">&#127968; Inicio</a> 
+                    <span class="separador">/</span>
+                    <a href="{% url 'lista' %}?categoria={{ producto.categoria.id }}">{{ producto.categoria.nombre }}</a>
+                </nav>
+
+                <span class="badge-categoria">{{ producto.categoria.nombre }}</span>
+
+                <h1>{{ producto.nombre }}</h1>
+                <p class="detalle-precio">${{ producto.precio }}</p>
+
+                <div class="detalle-descripcion">
+                    <h3>Descripci&#243;n</h3>
+                    <p>{{ producto.descripcion }}</p>
+                </div>
+
+                <div class="detalle-stock">
+                    {% if stock_disponible > 0 %}
+                        <span class="stock-disponible">&#10004; Disponible</span>
+                        <span class="stock-cantidad">({{ stock_disponible }} unidades disponibles)</span>
+                    {% else %}
+                        <span class="stock-agotado">&#10060; Agotado</span>
+                    {% endif %}
+                </div>
+                
+                <form action="{% url 'agregar' producto.id %}" method="POST">
+                {% csrf_token %}  
+                    <div class="selector-cantidad">
+                        <label for="cantidad">Cantidad:</label>
+                        <div class="cantidad-controles">
+                        <button type="button" onclick="cambiarCantidad(-1)">-</button>
+                        <input type="number" id="cantidad" name="cantidad" value="1" min="1" max="{{ stock_disponible }}" readonly>
+                        <button type="button" onclick="cambiarCantidad(1)">+</button>
+                        </div>
+                    </div>
+
+
+                    <div class="acciones-compra">
+                        <button class="btn-comprar" id="btn-comprar" {% if stock_disponible == 0 %}disabled{% endif %}>
+                            <span class="btn-texto">🛒 Agregar al carrito</span>
+                        </button>
+                        <a href="{% url 'lista' %}" class="btn-volver">← Volver al catálogo</a>
+                    </div>
+                </form>
 
 
 
+            </div>
+            </div>
 
-{% block contenido %}
-<div class="detalle-producto">
-    <div class="imagen-seccion">
-        {% if producto.imagen %}
-            <img src="{{ producto.imagen.url }}" alt="{{ producto.nombre }}" style="max-width: 400px;"
-        {% else %}            
-            <img src="{% static 'catalogo/img/no-foto.jpeg' %}" alt="Sin imagen">
-        {% endif %}
+            {% if relacionados %}
+            <div class="sidebar-relacionados">
+                <h3>Productos relacionados</h3>
+                <div class="lista-relacionados">
+                    {% for rel in relacionados %}
+                    <a href="{% url 'detalle' rel.id %}" class="tarjeta-relacionado">
+                        {% if rel.imagen %}
+                            <img src="{{ rel.imagen.url }}" alt="{{ rel.nombre }}">
+                        {% else %}
+                            <img src="{% static 'catalogo/img/no-foto.jpeg' %}" alt="Sin imagen">
+                        {% endif %}
+                        <div class="info-relacionado">
+                            <h4>{{ rel.nombre }}</h4>
+                            <p class="precio-relacionado">${{ rel.precio }}</p>
+                        </div>
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+            {% endif %}
+        </div>
     </div>
 </div>
 
-<div class="info-seccion">
-    <h1>{{ producto.nombre }}</h1>
-    <p class="categoria">Categoria: {{ producto.categoria.nombre }}</p>
-    <p class="precio">Precio: $ {{ producto.precio }}</p>
+<script>
 
-    {% if producto.stock < 5 and producto.stock > 0 %}
-        <p style="color: red; font-weight:bold;"> !!Solo quedan {{ producto.stock }} unidades!!</p>
-    {% elif producto.stock == 0 %}
-        <p style="color: gray;"> Agotado temporalmente</p>
-    {% else %}
-        <p style="color: green">Stock disponible: {{ producto.stock }}</p>
-    {% endif %}
-
-    <hr>
-    <h3>Descripción</h3>
-    <p>{{ producto.descripcion }}</p>
-
-    <button class="btn-comprar">Añadir al carrito</button>
-    <br>
-    <a href="{% url 'lista' %}">Volver al catálogo</a>
-</div>
 {% endblock %}

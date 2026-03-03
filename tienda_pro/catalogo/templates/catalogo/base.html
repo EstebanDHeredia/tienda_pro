@@ -1,0 +1,59 @@
+{% load static %}
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}Mi Tienda{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'catalogo/css/estilos.css' %}">
+</head>
+<body>
+    <header class="navbar">
+        <div class="navbar-container">
+            <a href="{% url 'lista' %}" class="logo">
+                <span class="logo-icono">🏪</span>
+                <span class="logo-texto">Mi Tienda</span>
+            </a>
+            
+            <nav class="navbar-menu">
+                <a href="{% url 'lista' %}" class="nav-link">Catálogo</a>
+            </nav>
+            
+            <div class="navbar-carrito">
+                <a href="{% url 'ver_carrito' %}" class="carrito-boton">
+                    <span class="carrito-icono">🛒</span>
+                    {% if carrito.total_items > 0 %}
+                    <span id="contador-carrito" class="carrito-badge">{{ carrito.total_items }}</span>
+                    {% endif %}
+                </a>
+                <div class="carrito-info">
+                    <span class="carrito-label">Carrito</span>
+                    <span id="monto-carrito" class="carrito-monto">${{ carrito.total_pagar }}</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <div class="container-mensajes">
+    {% if messages %}
+        {% for message in messages %}
+            <div class="alert alert-{{ message.tags }}">
+                {{ message }}
+            </div>
+        {% endfor %}
+    {% endif %}
+    </div>
+
+    {% block content %}{% endblock %}
+
+</body>
+</html>
+
+
+<script>
+    <!-- muestra el message de django por 3 segundos y se borra solo -->
+    setTimeout(function() {
+        let messages = document.querySelectorAll('.alert');
+        messages.forEach(function(m) {
+            m.style.display = 'none';
+        });
+    }, 3000); // 3 segundos
+</script>
