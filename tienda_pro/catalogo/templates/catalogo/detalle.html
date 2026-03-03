@@ -106,5 +106,23 @@
 </div>
 
 <script>
+    function cambiarCantidad(valor) {
+        const input = document.getElementById('cantidad');
+        const maxStock = parseInt(input.getAttribute('max'));
+        let currentVal = parseInt(input.value);
+
+        let nuevoValor = currentVal + valor;
+
+        if (nuevoValor >= 1 && nuevoValor <= maxStock) {
+            input.value = nuevoValor;
+        }
+    }
+
+    function cambiarImagen(url) {
+        document.getElementById('imagen-principal').src = url;
+    }
+</script>
 
 {% endblock %}
+
+
