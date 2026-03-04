@@ -20,7 +20,7 @@ class Producto(models.Model):
 
 class ImagenProducto(models.Model):
     producto = models.ForeignKey(Producto, related_name='imagenes', on_delete=models.CASCADE)
-    imagen = models.ImageField(upload_to='productos/galeria/')
+    imagen = models.ImageField(upload_to='productos/')
     
     class Meta:
         ordering = ['id']
