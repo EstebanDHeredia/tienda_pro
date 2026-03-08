@@ -1,0 +1,30 @@
+{% extends 'catalogo/base.html' %}
+
+{% block content %}
+<div class="contenedor-checkout">
+    <h1>Finalizar Compra</h1>
+
+    <div class="checkout-layout">
+        <div class="col-formulario">
+            <h3>Tus Datos de Envío</h3>
+            <form method="post" class="form-pedido">
+                {% csrf_token %}
+                {{ form.as_p }}
+                <button type="submit" class="btn-finalizar">Confirmar y Enviar WhatsApp</button>
+            </form>
+        </div>
+
+        <div class="col-resumen">
+            <h3>Resumen del Pedido</h3>
+            <ul>
+                {% for item in carrito.productos_detalle %}
+                    <li>{{ item.cantidad }} x {{ item.nombre}} - ${{ item.subtotal }}</li>
+                {% endfor %}
+            </ul>
+            <hr>
+            <p class="total-checkout">Total a pagar: <strong>{{ carrito.total_pagar }}</strong></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+

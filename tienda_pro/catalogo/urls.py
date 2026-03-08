@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ListaProductosView, DetalleProductoView, agregar_producto, ver_carrito, eliminar_producto, limpiar_carrito, finalizar_pedido, sumar_item, restar_item
+from .views import ListaProductosView, DetalleProductoView, agregar_producto, ver_carrito, eliminar_producto, limpiar_carrito,  sumar_item, restar_item, pedido_crear, pedido_confirmado
 
 urlpatterns = [
     path('', ListaProductosView.as_view(), name='lista'),
@@ -8,8 +8,10 @@ urlpatterns = [
     path('carrito/', ver_carrito, name="ver_carrito"),
     path('eliminar/<int:producto_id>/', eliminar_producto, name='eliminar'),
     path('limpiar/', limpiar_carrito, name='limpiar'),
-    path('finalizar-pedido/', finalizar_pedido, name="finalizar_pedido"),
+    # path('finalizar-pedido/', finalizar_pedido, name="finalizar_pedido"),
     path('sumar-item/<int:producto_id>', sumar_item, name='sumar_item'),
     path('restar-item/<producto_id>', restar_item, name='restar_item'),
+    path('checkout/', pedido_crear, name='checkout'),
+    path('confirmado/', pedido_confirmado, name='pedido_confirmado'),
 ]
 

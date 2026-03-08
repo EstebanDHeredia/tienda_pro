@@ -1,10 +1,12 @@
 from django.contrib import messages
+from decimal import Decimal
+from .forms import PedidoCreateForm
 from django.http import JsonResponse
 import urllib.parse
 from urllib.parse import quote
 from django.shortcuts import redirect, get_object_or_404, render
 from django.views.generic import ListView, DetailView
-from .models import Producto
+from .models import Producto, DetallePedido, Pedido
 from .carrito import Carrito
 from django.db.models import Q
 
@@ -107,43 +109,47 @@ def limpiar_carrito(request):
     carrito = Carrito(request)
     carrito.limpiar()
     return redirect('ver_carrito')
+  
+  
+  # Esta función estaba en views.py
+  # No se utiliza mas porque ahora usamos pedido_crear y pedido_confirmado
     
-def finalizar_pedido(request):
-    carrito = Carrito(request)
+# def finalizar_pedido(request):
+#     carrito = Carrito(request)
 
-    if not carrito.carrito:
-        return redirect('lista')
+#     if not carrito.carrito:
+#         return redirect('lista')
 
 
-    # --- Configuración del Mensaje Decorado ---
-    mensaje = "🛒 NUEVO PEDIDO - Mi Tienda\n\n"
+#     # --- Configuración del Mensaje Decorado ---
+#     mensaje = "🛒 NUEVO PEDIDO - Mi Tienda\n\n"
         
-    for key, value in carrito.carrito.items():
-        # Descuento el stock del producto
-        producto = Producto.objects.get(id=value['producto_id'])
-        producto.stock -= value['cantidad']
-        producto.save()
+#     for key, value in carrito.carrito.items():
+#         # Descuento el stock del producto
+#         producto = Producto.objects.get(id=value['producto_id'])
+#         producto.stock -= value['cantidad']
+#         producto.save()
         
-        # Genero el msj de whatsApp
-        mensaje += f"📦 {value['nombre']}\n"
-        mensaje += f"  Cantidad: {value['cantidad']}\n"
-        mensaje += f"  Precio: ${value['precio']}\n"
-        mensaje += f"  Subtotal: ${value['subtotal']}\n\n"
+#         # Genero el msj de whatsApp
+#         mensaje += f"📦 {value['nombre']}\n"
+#         mensaje += f"  Cantidad: {value['cantidad']}\n"
+#         mensaje += f"  Precio: ${value['precio']}\n"
+#         mensaje += f"  Subtotal: ${value['subtotal']}\n\n"
 
-    mensaje += "===========================\n"
-    mensaje += f"💰 TOTAL: ${carrito.total_pagar}\n"
-    mensaje += "===========================\n\n"
-    mensaje += "Gracias por tu compra!"    
-    mensaje += "_Por favor, confírmame los datos para la entrega._"
+#     mensaje += "===========================\n"
+#     mensaje += f"💰 TOTAL: ${carrito.total_pagar}\n"
+#     mensaje += "===========================\n\n"
+#     mensaje += "Gracias por tu compra!"    
+#     mensaje += "_Por favor, confírmame los datos para la entrega._"
     
-    # Codificar el mensaje de forma robusta para WhatsApp
-    telefono = "5493512946883"
-    params = {'phone': telefono, 'text': mensaje}
-    url_base = "https://api.whatsapp.com/send?"
-    url_encoded = urllib.parse.urlencode(params, quote_via=urllib.parse.quote)
-    url_whatsapp = url_base + url_encoded
+#     # Codificar el mensaje de forma robusta para WhatsApp
+#     telefono = "5493512946883"
+#     params = {'phone': telefono, 'text': mensaje}
+#     url_base = "https://api.whatsapp.com/send?"
+#     url_encoded = urllib.parse.urlencode(params, quote_via=urllib.parse.quote)
+#     url_whatsapp = url_base + url_encoded
 
-    return redirect(url_whatsapp)
+#     return redirect(url_whatsapp)
 
 def sumar_item(request, producto_id):
     carrito = Carrito(request)
@@ -163,3 +169,70 @@ def restar_item(request, producto_id):
     producto = get_object_or_404(Producto, id=producto_id)
     carrito.restar(producto)
     return redirect('ver_carrito')
+
+def pedido_crear(request):
+    carrito = Carrito(request)
+    if request.method == 'POST':
+        form = PedidoCreateForm(request.POST)
+        if form.is_valid():
+            # Creo el objeto pedido
+            pedido = form.save(commit=False)
+            pedido.total = carrito.total_pagar
+            pedido.save() # Ahora lo guardamos en la BD y se le da una ID
+            
+            # Guardamos cada item del carrito en DetallePedido
+            for item in carrito.productos_detalle:
+                DetallePedido.objects.create(
+                    pedido=pedido,
+                    producto=item['producto'], # El objeto producto REAL
+                    precio=Decimal(item['precio']), # El precio en la BD es un DecimalFielditem['precio'],
+                    cantidad=item['cantidad']
+                )
+            
+            # Guardo en el Id del pedido en la sesión, para utilizarlo en la redirección
+            request.session['pedido_id'] = pedido.id
+
+            # Redirigimos a una nueva funcion que enviará a whatsapp
+            return redirect('pedido_confirmado')
+
+    else:
+        form = PedidoCreateForm()
+        
+    return render(request, 'catalogo/checkout.html', {'carrito': carrito, 'form':form})
+
+def pedido_confirmado(request):
+    pedido_id = request.session.get('pedido_id')
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+    carrito = Carrito(request)
+
+    # Contruyo el msj de WhatsApp con los datos del formulario
+    mensaje = "🛒 NUEVO PEDIDO - Mi Tienda\n\n"
+    mensaje = f" *Pedido: #{pedido.id}*\n"
+    mensaje += f" Cliente: {pedido.nombre} {pedido.apellido}\n"
+    mensaje += f" Entrega: {pedido.direccion}\n"
+    mensaje += f" Tel: {pedido.telefono}\n"
+    mensaje += "----------------------------------------------------\n\n"
+
+    for item in pedido.items.all(): #'items' es el related_name que puse en DetallePedido
+        mensaje += f"📦 {item.producto.nombre}\n"
+        mensaje += f"  Cantidad: {item.cantidad}\n"
+        mensaje += f"  Precio: ${item.precio}\n"
+        mensaje += f"  Subtotal: ${item.obtener_costo()}\n\n"
+    
+    mensaje += "===========================\n"
+    mensaje += f"💰 *TOTAL: ${pedido.total}*\n"
+    mensaje += "===========================\n\n"
+    mensaje += "Gracias por tu compra!"  
+            
+
+    # limpiamos el carrito y el Id del pedido de la sesion
+    carrito.limpiar()
+    del request.session['pedido_id']
+    
+    telefono = "5493512946883"
+    params = {'phone': telefono, 'text': mensaje}
+    url_base = "https://api.whatsapp.com/send?"
+    url_encoded = urllib.parse.urlencode(params, safe='')
+    url_whatsapp = url_base + url_encoded
+
+    return redirect(url_whatsapp)

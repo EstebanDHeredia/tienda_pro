@@ -1336,3 +1336,12 @@ body, html {
     from { transform: translateX(100%); opacity: 0; }
     to { transform: translateX(0); opacity: 1; }
 }
+
+.btn-checkout {
+    background-color: #2ecc71; /* Un verde lindo */
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    text-decoration: none;
+    font-weight: bold;
+}

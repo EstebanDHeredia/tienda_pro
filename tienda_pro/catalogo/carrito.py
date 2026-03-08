@@ -79,13 +79,14 @@ class Carrito:
         productos_ids = self.carrito.keys()
         # Buscamos los objetos reales en la BD
         productos_db = Producto.objects.filter(id__in=productos_ids)
+        # Creo un diccionario para buscar los productos por Id rápido
+        productos_dict = {str(p.id): p for p in productos_db}
 
         lista_detallada = []
-        for producto in productos_db:
-            id_str = str(producto.id)
-            # Combinamos los datos de la sesión con el objeto real
-            item = self.carrito[id_str] # Son los datos del producto que están en el carrito de la sesión (accessible en el template a través de item.cantidad, item.precio, item.imagen, etc)
-            item['producto'] = producto # Son los datos del producto que están en la BD (accesible en el template a través de item.producto.stock o item.producto.precio, item.producto.imagen, etc)
+        for id_prod, datos in self.carrito.items():
+            #  .copy() es la clave: creamos una copia para NO afectar a self.session
+            item = datos.copy() # Son los datos del producto que están en el carrito de la sesión (accessible en el template a través de item.cantidad, item.precio, item.imagen, etc)
+            item['producto'] = productos_dict.get(id_prod) # Son los datos del producto que están en la BD (accesible en el template a través de item.producto.stock o item.producto.precio, item.producto.imagen, etc)
             lista_detallada.append(item)
 
         return lista_detallada

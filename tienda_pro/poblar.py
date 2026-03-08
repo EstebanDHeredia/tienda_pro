@@ -19,22 +19,61 @@ from catalogo.models import Producto, Categoria, ImagenProducto
 MEDIA_ROOT = os.path.join(project_root, 'media', 'productos')
 os.makedirs(MEDIA_ROOT, exist_ok=True)
 
-def descargar_imagen(url, nombre_archivo):
+def descargar_imagen(palabras_clave, nombre_archivo):
     try:
         ruta = os.path.join(MEDIA_ROOT, nombre_archivo)
-        print("--------------------------")
-        print(ruta)
-        print("--------------------------")
-        if not os.path.exists(ruta):
-            urllib.request.urlretrieve(url, ruta)
-            print(f"    📥 {nombre_archivo}")
+        if os.path.exists(ruta):
+            os.remove(ruta)
+        
+        # Convertir a keywords en inglés
+        keywords_en = {
+            'electrónica': 'electronics', 'hogar': 'home', 'deportes': 'sports',
+            'juguetes': 'toys', 'ropa': 'clothing', 'libros': 'books', 'música': 'music',
+            'smartphone': 'smartphone', 'laptop': 'laptop', 'auriculares': 'headphones',
+            'smartwatch': 'smartwatch', 'tablet': 'tablet', 'cámara': 'camera',
+            'consola': 'game console', 'altavoz': 'speaker', 'monitor': 'monitor',
+            'teclado': 'keyboard', 'sofá': 'sofa', 'mesa': 'table', 'lámpara': 'lamp',
+            'toallas': 'towels', 'colchón': 'mattress', 'silla': 'chair', 'cortinas': 'curtains',
+            'espejo': 'mirror', 'organizador': 'organizer', 'maceta': 'pot',
+            'pelota': 'ball', 'fútbol': 'football', 'tenis': 'tennis', 'yoga': 'yoga',
+            'bandas': 'resistance bands', 'mancuernas': 'dumbbell', 'balón': 'basketball',
+            'zapatillas': 'sneakers', 'guantes': 'gloves', 'cuerda': 'jump rope',
+            'lego': 'lego', 'muñeca': 'doll', 'puzzle': 'puzzle', 'peluche': 'stuffed animal',
+            'pintura': 'paint', 'drone': 'drone', 'campera': 'jacket', 'jeans': 'jeans',
+            'vestido': 'dress', 'gorra': 'cap', 'bufanda': 'scarf', 'camisa': 'shirt',
+            'shorts': 'shorts', 'medias': 'socks'
+        }
+        
+        # Traducir palabras clave a inglés
+        palabras = palabras_clave.lower().replace(',', ' ').split()
+        keywords = [keywords_en.get(p, p) for p in palabras]
+        keywords_str = ','.join(keywords)
+        
+        # Intentar con loremflickr (más confiable)
+        url = f'https://loremflickr.com/400/400/{keywords_str}?random={random.randint(1,9999)}'
+        
+        import socket
+        socket.setdefaulttimeout(10)
+        
+        urllib.request.urlretrieve(url, ruta)
+        print(f"    📥 {keywords_str} -> {nombre_archivo}")
         return f'productos/{nombre_archivo}'
     except Exception as e:
-        print(f"    ❌ Error: {e}")
+        print(f"    ❌ Error: {str(e)[:50]}")
         return None
 
 def poblar_50():
-    print("📥 Descargando imágenes...")
+    print("🧹 Limpiando imágenes anteriores...")
+    # Eliminar todas las imágenes de productos
+    for f in os.listdir(MEDIA_ROOT):
+        if f.startswith('prod_'):
+            try:
+                os.remove(os.path.join(MEDIA_ROOT, f))
+            except:
+                pass
+    print("✅ Imágenes anteriores eliminadas\n")
+    
+    print("📥 Descargando imágenes relacionadas con cada producto...")
     
     # Limpiar
     Producto.objects.all().delete()
@@ -108,12 +147,14 @@ def poblar_50():
     for i, (nombre, desc, precio, stock, cat_nombre) in enumerate(productos_data):
         cat = Categoria.objects.get(nombre=cat_nombre)
         
+        # Generar palabras clave del producto (nombre + categoría)
+        palabras_clave = f'{nombre},{cat_nombre}'.replace(' ', ',').lower()
+        
         # 3 imágenes distintas por producto
         imagenes_producto = []
         for j in range(3):
-            url = f'https://picsum.photos/400/400?random={i*10+j}'
             nombre_img = f'prod_{i+1}_{j+1}.jpg'
-            ruta = descargar_imagen(url, nombre_img)
+            ruta = descargar_imagen(palabras_clave, nombre_img)
             if ruta:
                 imagenes_producto.append(ruta)
         
