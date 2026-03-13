@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ListaProductosView, DetalleProductoView, agregar_producto, ver_carrito, eliminar_producto, limpiar_carrito,  sumar_item, restar_item, pedido_crear, pedido_confirmado
+from .views import ListaProductosView, DetalleProductoView, agregar_producto, ver_carrito,eliminar_producto, limpiar_carrito,  sumar_item, restar_item, pedido_crear,pedido_confirmado, dashboard_ventas, lista_pedidos, cambiar_estado_pedido
 
 urlpatterns = [
     path('', ListaProductosView.as_view(), name='lista'),
@@ -13,5 +13,9 @@ urlpatterns = [
     path('restar-item/<producto_id>', restar_item, name='restar_item'),
     path('checkout/', pedido_crear, name='checkout'),
     path('confirmado/', pedido_confirmado, name='pedido_confirmado'),
+    path('dashboard/', dashboard_ventas, name='dashboard'),
+    path('pedidos/', lista_pedidos, name='lista_pedidos'),
+    path('pedidos/estado/<int:pedido_id>/<str:nuevo_estado>', cambiar_estado_pedido, name='cambiar_estado'),
+    
 ]
 

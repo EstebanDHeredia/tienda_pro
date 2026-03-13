@@ -71,22 +71,18 @@ class Carrito:
     
     @property
     def productos_detalle(self):
-        # Trae los objetos Producto de la BD
-        # para tener acceso al stock real en el HTML
-        # y poder saber e impedir que ponga en el carrito
-        # mas productos de los que hay en stock
-               
+        # Solo devuelve los datos que ya están en la sesión
+        # No guarda objetos Django en la sesión
         productos_ids = self.carrito.keys()
-        # Buscamos los objetos reales en la BD
         productos_db = Producto.objects.filter(id__in=productos_ids)
-        # Creo un diccionario para buscar los productos por Id rápido
         productos_dict = {str(p.id): p for p in productos_db}
 
         lista_detallada = []
         for id_prod, datos in self.carrito.items():
-            #  .copy() es la clave: creamos una copia para NO afectar a self.session
-            item = datos.copy() # Son los datos del producto que están en el carrito de la sesión (accessible en el template a través de item.cantidad, item.precio, item.imagen, etc)
-            item['producto'] = productos_dict.get(id_prod) # Son los datos del producto que están en la BD (accesible en el template a través de item.producto.stock o item.producto.precio, item.producto.imagen, etc)
+            # .copy() crea una copia para NO afectar la sesión
+            item = datos.copy()
+            # Agregamos el objeto solo para uso en memoria (no se guarda en sesión)
+            item['producto'] = productos_dict.get(id_prod)
             lista_detallada.append(item)
 
         return lista_detallada

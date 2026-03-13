@@ -1,0 +1,389 @@
+{% extends 'catalogo/base.html' %}
+
+{% block content %}
+<div class="pedidos-container">
+    <header class="pedidos-header">
+        <div>
+            <h1>📦 Gestión de Pedidos</h1>
+            <p class="pedidos-subtitle">Administra y controla todos los pedidos de tu tienda</p>
+        </div>
+        <div class="pedidos-stats">
+            <div class="stat-mini">
+                <span class="stat-num">{{ pedidos.count }}</span>
+                <span class="stat-label">Total Pedidos</span>
+            </div>
+        </div>
+    </header>
+
+    <div class="filtros-container">
+        <div class="filtros">
+            <a href="{% url 'lista_pedidos' %}" class="filtro-btn {% if not request.GET.estado %}active{% endif %}">
+                <span class="filtro-icon">📋</span> Todos
+            </a>
+            <a href="{% url 'lista_pedidos' %}?estado=pendiente" class="filtro-btn {% if request.GET.estado == 'pendiente' %}active{% endif %} pendiente">
+                <span class="filtro-icon">⏳</span> Pendientes
+            </a>
+            <a href="{% url 'lista_pedidos' %}?estado=pagado" class="filtro-btn {% if request.GET.estado == 'pagado' %}active{% endif %} pagado">
+                <span class="filtro-icon">✅</span> Pagados
+            </a>
+            <a href="{% url 'lista_pedidos' %}?estado=cancelado" class="filtro-btn {% if request.GET.estado == 'cancelado' %}active{% endif %} cancelado">
+                <span class="filtro-icon">❌</span> Cancelados
+            </a>
+        </div>
+    </div>
+
+    <div class="tabla-container">
+        <table class="pedidos-table">
+            <thead>
+                <tr>
+                    <th class="text-center">#</th>
+                    <th>Fecha</th>
+                    <th>Cliente</th>
+                    <th>Contacto</th>
+                    <th class="text-right">Total</th>
+                    <th class="text-center">Estado</th>
+                    <th class="text-center">Acciones</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for pedido in pedidos %}
+                <tr>
+                    <td class="text-center"><span class="pedido-id">#{{ pedido.id }}</span></td>
+                    <td>
+                        <div class="fecha-cell">
+                            <span class="fecha">{{ pedido.fecha|date:"d/m/Y" }}</span>
+                            <span class="hora">{{ pedido.fecha|date:"H:i" }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="cliente-cell">
+                            <span class="cliente-nombre">{{ pedido.nombre }} {{ pedido.apellido }}</span>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="telefono">{{ pedido.telefono }}</span>
+                    </td>
+                    <td class="text-right">
+                        <span class="total">${{ pedido.total|floatformat:2 }}</span>
+                    </td>
+                    <td class="text-center">
+                        <span class="badge badge-{{ pedido.estado }}">
+                            {% if pedido.estado == 'pendiente' %}⏳{% elif pedido.estado == 'pagado' %}✅{% else %}❌{% endif %}
+                            {{ pedido.get_estado_display }}
+                        </span>
+                    </td>
+                    <td class="text-center">
+                        <div class="acciones">
+                            {% if pedido.estado == 'pendiente' %}
+                                <a href="{% url 'cambiar_estado' pedido.id 'pagado' %}" class="btn-accion btn-success" title="Marcar como pagado">
+                                    <span>✓</span> Pagar
+                                </a>
+                            {% endif %}
+                            {% if pedido.estado != 'cancelado' %}
+                                <a href="{% url 'cambiar_estado' pedido.id 'cancelado' %}" class="btn-accion btn-danger" title="Cancelar pedido">
+                                    <span>✕</span> Cancelar
+                                </a>
+                            {% endif %}
+                        </div>
+                    </td>
+                </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="7" class="text-center empty-state">
+                        <div class="empty-icon">📦</div>
+                        <p>No hay pedidos para mostrar</p>
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+    .pedidos-container {
+        padding: 30px;
+        background: #f8f9fa;
+        min-height: 100vh;
+    }
+
+    .pedidos-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 30px;
+    }
+
+    .pedidos-header h1 {
+        margin: 0;
+        color: #2c3e50;
+        font-size: 1.8rem;
+    }
+
+    .pedidos-subtitle {
+        margin: 5px 0 0;
+        color: #7f8c8d;
+        font-size: 0.9rem;
+    }
+
+    .pedidos-stats {
+        display: flex;
+        gap: 20px;
+    }
+
+    .stat-mini {
+        background: white;
+        padding: 15px 25px;
+        border-radius: 12px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+        text-align: center;
+    }
+
+    .stat-num {
+        display: block;
+        font-size: 1.5rem;
+        font-weight: bold;
+        color: #3498db;
+    }
+
+    .stat-label {
+        font-size: 0.75rem;
+        color: #7f8c8d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .filtros-container {
+        margin-bottom: 25px;
+    }
+
+    .filtros {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+    }
+
+    .filtro-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 18px;
+        background: white;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        text-decoration: none;
+        color: #555;
+        font-size: 0.9rem;
+        transition: all 0.2s ease;
+    }
+
+    .filtro-btn:hover {
+        border-color: #3498db;
+        color: #3498db;
+    }
+
+    .filtro-btn.active {
+        background: #3498db;
+        border-color: #3498db;
+        color: white;
+    }
+
+    .filtro-btn.pendiente.active {
+        background: #f1c40f;
+        border-color: #f1c40f;
+        color: #000;
+    }
+
+    .filtro-btn.pagado.active {
+        background: #2ecc71;
+        border-color: #2ecc71;
+    }
+
+    .filtro-btn.cancelado.active {
+        background: #e74c3c;
+        border-color: #e74c3c;
+    }
+
+    .tabla-container {
+        background: white;
+        border-radius: 16px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        overflow: hidden;
+    }
+
+    .pedidos-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+
+    .pedidos-table thead {
+        background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+        color: white;
+    }
+
+    .pedidos-table th {
+        padding: 16px 15px;
+        text-align: left;
+        font-weight: 600;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .pedidos-table td {
+        padding: 16px 15px;
+        border-bottom: 1px solid #f0f0f0;
+        vertical-align: middle;
+    }
+
+    .pedidos-table tbody tr:hover {
+        background: #f8f9fa;
+    }
+
+    .pedidos-table tbody tr:last-child td {
+        border-bottom: none;
+    }
+
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+
+    .pedido-id {
+        font-weight: bold;
+        color: #3498db;
+        background: #ebf5fb;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-size: 0.85rem;
+    }
+
+    .fecha-cell {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .fecha {
+        font-weight: 500;
+        color: #2c3e50;
+    }
+
+    .hora {
+        font-size: 0.8rem;
+        color: #95a5a6;
+    }
+
+    .cliente-nombre {
+        font-weight: 500;
+        color: #2c3e50;
+    }
+
+    .telefono {
+        color: #7f8c8d;
+        font-size: 0.9rem;
+    }
+
+    .total {
+        font-weight: bold;
+        color: #2c3e50;
+        font-size: 1.1rem;
+    }
+
+    .badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        text-transform: capitalize;
+    }
+
+    .badge-pendiente {
+        background: #fef9e7;
+        color: #b7950b;
+    }
+
+    .badge-pagado {
+        background: #d5f4e6;
+        color: #1e8449;
+    }
+
+    .badge-cancelado {
+        background: #fadbd8;
+        color: #c0392b;
+    }
+
+    .acciones {
+        display: flex;
+        gap: 8px;
+        justify-content: center;
+    }
+
+    .btn-accion {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        border-radius: 6px;
+        text-decoration: none;
+        font-size: 0.8rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+    }
+
+    .btn-success {
+        background: #d5f4e6;
+        color: #1e8449;
+    }
+
+    .btn-success:hover {
+        background: #1e8449;
+        color: white;
+    }
+
+    .btn-danger {
+        background: #fadbd8;
+        color: #c0392b;
+    }
+
+    .btn-danger:hover {
+        background: #c0392b;
+        color: white;
+    }
+
+    .empty-state {
+        padding: 60px 20px;
+    }
+
+    .empty-icon {
+        font-size: 3rem;
+        margin-bottom: 15px;
+    }
+
+    .empty-state p {
+        color: #7f8c8d;
+        font-size: 1rem;
+    }
+
+    @media (max-width: 768px) {
+        .pedidos-header {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 20px;
+        }
+
+        .pedidos-table {
+            font-size: 0.85rem;
+        }
+
+        .pedidos-table th, 
+        .pedidos-table td {
+            padding: 12px 8px;
+        }
+
+        .acciones {
+            flex-direction: column;
+        }
+    }
+</style>
+{% endblock %}

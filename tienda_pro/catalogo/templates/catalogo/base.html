@@ -15,6 +15,10 @@
             
             <nav class="navbar-menu">
                 <a href="{% url 'lista' %}" class="nav-link">Catálogo</a>
+                {% if user.is_staff %}
+                <a href="{% url 'dashboard' %}" class="nav-link">📊 Dashboard</a>
+                <a href="{% url 'lista_pedidos' %}" class="nav-link">📋 Pedidos</a>
+                {% endif %}
             </nav>
             
             <div class="navbar-carrito">

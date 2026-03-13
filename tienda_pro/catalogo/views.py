@@ -1,14 +1,20 @@
+from django.db.models.functions import TruncDate
+from django.utils import timezone
+from datetime import timedelta
 from django.contrib import messages
 from decimal import Decimal
 from .forms import PedidoCreateForm
-from django.http import JsonResponse
 import urllib.parse
+import json
 from urllib.parse import quote
 from django.shortcuts import redirect, get_object_or_404, render
 from django.views.generic import ListView, DetailView
 from .models import Producto, DetallePedido, Pedido
 from .carrito import Carrito
 from django.db.models import Q
+from django.db.models import Sum, Count
+from django.contrib.admin.views.decorators import staff_member_required
+from django.db.models import F
 
 # Create your views here.
 class ListaProductosView(ListView):
@@ -55,7 +61,6 @@ class ListaProductosView(ListView):
         
         return context
         
-
 class DetalleProductoView(DetailView):
     model = Producto
     template_name = "catalogo/detalle.html"
@@ -93,9 +98,7 @@ def agregar_producto(request, producto_id):
         messages.success(request, f"✅ Se agregó una unidad de {producto.nombre}.")
     
     return redirect('detalle', pk=producto_id)
-    
-    
-    
+        
 def ver_carrito(request):
     return render(request, 'catalogo/carrito_detalle.html')
 
@@ -114,43 +117,6 @@ def limpiar_carrito(request):
   # Esta función estaba en views.py
   # No se utiliza mas porque ahora usamos pedido_crear y pedido_confirmado
     
-# def finalizar_pedido(request):
-#     carrito = Carrito(request)
-
-#     if not carrito.carrito:
-#         return redirect('lista')
-
-
-#     # --- Configuración del Mensaje Decorado ---
-#     mensaje = "🛒 NUEVO PEDIDO - Mi Tienda\n\n"
-        
-#     for key, value in carrito.carrito.items():
-#         # Descuento el stock del producto
-#         producto = Producto.objects.get(id=value['producto_id'])
-#         producto.stock -= value['cantidad']
-#         producto.save()
-        
-#         # Genero el msj de whatsApp
-#         mensaje += f"📦 {value['nombre']}\n"
-#         mensaje += f"  Cantidad: {value['cantidad']}\n"
-#         mensaje += f"  Precio: ${value['precio']}\n"
-#         mensaje += f"  Subtotal: ${value['subtotal']}\n\n"
-
-#     mensaje += "===========================\n"
-#     mensaje += f"💰 TOTAL: ${carrito.total_pagar}\n"
-#     mensaje += "===========================\n\n"
-#     mensaje += "Gracias por tu compra!"    
-#     mensaje += "_Por favor, confírmame los datos para la entrega._"
-    
-#     # Codificar el mensaje de forma robusta para WhatsApp
-#     telefono = "5493512946883"
-#     params = {'phone': telefono, 'text': mensaje}
-#     url_base = "https://api.whatsapp.com/send?"
-#     url_encoded = urllib.parse.urlencode(params, quote_via=urllib.parse.quote)
-#     url_whatsapp = url_base + url_encoded
-
-#     return redirect(url_whatsapp)
-
 def sumar_item(request, producto_id):
     carrito = Carrito(request)
     producto = get_object_or_404(Producto, id=producto_id)
@@ -236,3 +202,169 @@ def pedido_confirmado(request):
     url_whatsapp = url_base + url_encoded
 
     return redirect(url_whatsapp)
+
+@staff_member_required # Solo el estaff puede ver lo que devuelve esta funcion
+def dashboard_ventas(request):
+    # --- FILTROS DE TIEMPO ---
+    hoy = timezone.now().date()
+    hace_7_dias = hoy - timedelta(days=6) # Usamos 6 para incluir "hoy" y completar 7 días
+        
+    # Total de dinero recaudado (solo los pedidos pagados)
+    total_recaudado = Pedido.objects.filter(estado='pagado').aggregate(Sum('total'))['total__sum'] or 0
+    
+    # Ventas de los ultimos 7 dias
+    ventas_recientes = Pedido.objects.filter(estado='pagado', fecha__gte = hace_7_dias).aggregate(Sum('total'))['total__sum'] or 0
+    
+    # Tckt promedio
+    cantidad_pagados = Pedido.objects.filter(estado='pagado').count()
+    ticket_promedio = total_recaudado / cantidad_pagados if cantidad_pagados > 0 else 0
+    
+    # Stock crítico
+    # Productos con menos de 5 unidades
+    stock_critico = Producto.objects.filter(stock__lt=5).order_by('stock')
+    
+    # Cantidad de pedidos según su estado
+    conteo_estados = Pedido.objects.values('estado').annotate(cantidad=Count('id'))
+    
+    # Los 5 productos mas vendidos:
+    productos_top = DetallePedido.objects.values('producto__nombre').annotate(
+        vendidos=Sum('cantidad')
+    ).order_by('-vendidos')[:5]
+
+    # DATOS PARA EL GRAFICO DE VENTAS DIARIAS DE LOS ULTIMOS 7 DIAS
+    ventas_diarias = Pedido.objects.filter(
+        estado='pagado',
+        fecha__date__gte=hace_7_dias
+        ).annotate(
+            dia=TruncDate('fecha')
+        ).values('dia').annotate(
+            total=Sum('total')
+        ).order_by('dia')
+        
+    # print("------------------------------------------")
+    # print("VENTAS DIARIAS")
+    # for v in ventas_diarias:
+    #     print(v['dia'])
+    #     print(v['total'])
+    # print("------------------------------------------")
+        
+    #Preparo las listas para el javascript
+    labels_grafico = []
+    datos_grafico = []
+    
+    # Logica para rellenar dias con 0
+    for i in range(7):
+        fecha_loop = hace_7_dias + timedelta(days=i)
+        print("fecha_loop")
+        print(fecha_loop)
+        labels_grafico.append(fecha_loop.strftime("%d/%m"))
+        
+        # Buscamos si hay venta ese dia en el queryset
+        # for v in ventas_diarias:
+        #     print("v.dia = {}, v.total = {}, fecha_loop = {}".format(v['dia'], v['total'], fecha_loop))
+        #     print(TruncDate(fecha_loop))
+        #     if v['dia'] == fecha_loop:
+        #         print ("coincide")
+        #     else:
+        #         print("no coincide")
+            
+        venta_dia = next((v['total'] for v in ventas_diarias if v['dia'] == fecha_loop), 0)
+        datos_grafico.append(float(venta_dia))
+        
+    # print("--------------------------------------------")
+    # print("labels_grafico")
+    # print(labels_grafico)
+    # print("---------------------------------------------")
+    # print("datos_grafico")
+    # print(datos_grafico)
+    
+    # Buscamos el producto que mas generó dinero en la semana
+    producto_estrella = DetallePedido.objects.filter(
+        pedido__estado='pagado',
+        pedido__fecha__gte = hace_7_dias # Filtramos los detalle pedido de los pedidos con estado 'pagado' y con fecha mayor o igual que hace 7 dias
+        ).annotate(
+            subtotal_detalle = F('precio') * F('cantidad') # Al resultado anterior le agrego una columna 'annotate' que se va a llamar subtotal_detalle en el que se calcula el total de la venta de ese producto al multiplicar el precio x la cantidad
+        ).values('producto__nombre',
+                 'producto__imagen',
+                 'producto__stock').annotate( # A ese resultado lo agrupo 'values' por nombre del producto e imagen (lo hago por imagen ya que es un campo que voy a necesitar luego para mostrar la imagen del producto) y stock (porque tambie lo voy a necesitar despues)
+            total_recaudado_prod = Sum('subtotal_detalle') # Y a esa agrupación le agrego un campo 'total_recaudado_prod con la suma de los subtotales de ese producto
+        ).order_by('-total_recaudado_prod').first() # De todo eso lo ordeno de mayor  a menor y de esa ordenación saco el primero. Es decir el producto que mas ingreso me produjo (precio x cantidad) enn los ultimos 7 dias
+    
+    print(producto_estrella)
+    
+    
+    context = {
+        'total_recaudado': total_recaudado,
+        'conteo_estados': conteo_estados,
+        'productos_top': productos_top,
+        'ventas_recientes': ventas_recientes,
+        'ticket_promedio': ticket_promedio,
+        'stock_critico': stock_critico,
+        'labels_grafico': labels_grafico,
+        'datos_grafico': datos_grafico,
+        'producto_estrella': producto_estrella
+    }
+    
+    return render(request, 'catalogo/dashboard.html', context)
+
+@staff_member_required
+def lista_pedidos(request):
+    # Obtenemos el filtro 'estado' si existe:
+    filtro_estado = request.GET.get('estado')
+
+    pedidos = Pedido.objects.all().order_by('-fecha')
+
+    if filtro_estado:
+        pedidos = pedidos.filter(estado=filtro_estado)
+    
+    return render(request, 'catalogo/lista_pedidos.html', {
+        'filtro_estado': filtro_estado,
+        'pedidos': pedidos
+    })
+
+@staff_member_required
+def cambiar_estado_pedido(request, pedido_id, nuevo_estado):
+    pedido = get_object_or_404(Pedido, id = pedido_id)
+    pedido.estado = nuevo_estado
+    pedido.save()
+    messages.success(request, f"Pedido #{pedido.id} marcado como {nuevo_estado}.")
+    return redirect('lista_pedidos')
+    
+
+
+# def finalizar_pedido(request):
+#     carrito = Carrito(request)
+
+#     if not carrito.carrito:
+#         return redirect('lista')
+
+
+#     # --- Configuración del Mensaje Decorado ---
+#     mensaje = "🛒 NUEVO PEDIDO - Mi Tienda\n\n"
+        
+#     for key, value in carrito.carrito.items():
+#         # Descuento el stock del producto
+#         producto = Producto.objects.get(id=value['producto_id'])
+#         producto.stock -= value['cantidad']
+#         producto.save()
+        
+#         # Genero el msj de whatsApp
+#         mensaje += f"📦 {value['nombre']}\n"
+#         mensaje += f"  Cantidad: {value['cantidad']}\n"
+#         mensaje += f"  Precio: ${value['precio']}\n"
+#         mensaje += f"  Subtotal: ${value['subtotal']}\n\n"
+
+#     mensaje += "===========================\n"
+#     mensaje += f"💰 TOTAL: ${carrito.total_pagar}\n"
+#     mensaje += "===========================\n\n"
+#     mensaje += "Gracias por tu compra!"    
+#     mensaje += "_Por favor, confírmame los datos para la entrega._"
+    
+#     # Codificar el mensaje de forma robusta para WhatsApp
+#     telefono = "5493512946883"
+#     params = {'phone': telefono, 'text': mensaje}
+#     url_base = "https://api.whatsapp.com/send?"
+#     url_encoded = urllib.parse.urlencode(params, quote_via=urllib.parse.quote)
+#     url_whatsapp = url_base + url_encoded
+
+#     return redirect(url_whatsapp)

@@ -65,5 +65,5 @@ class DetallePedido(models.Model):
         return f"{self.id} - {self.producto.nombre}"
 
     def obtener_costo(self):
-        return self.precio * self.cantidad
+        return (self.precio or 0) * (self.cantidad or 0)
     
