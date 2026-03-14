@@ -88,17 +88,16 @@ class PedidoAdmin(admin.ModelAdmin):
     )
     readonly_fields = ['total', 'fecha'] # Evita errores humanos
     
-    
-    
-    def save_model(self, request, obj, form, change):
-        # Si el estado cambió a 'pagado' en esta edición
-        if 'estado' in form.changed_data and obj.estado == 'pagado':
-            for item in obj.items.all():
-                producto = item.producto
-                producto.stock -= item.cantidad
-                producto.save()
+    # BORRA ESTO DE ACÁ, TODA LA LOGICA DEL NEGOCIO DEBE ESTAR CENTRALIZADA, Y LA MISMA ESTÁ EN SIGNALS
+    # def save_model(self, request, obj, form, change):
+    #     # Si el estado cambió a 'pagado' en esta edición
+    #     if 'estado' in form.changed_data and obj.estado == 'pagado':
+    #         for item in obj.items.all():
+    #             producto = item.producto
+    #             producto.stock -= item.cantidad
+    #             producto.save()
                 
-        super().save_model(request, obj, form, change)
+    #     super().save_model(request, obj, form, change)
     
 
 admin.site.register(Categoria)

@@ -324,6 +324,7 @@ def lista_pedidos(request):
 
 @staff_member_required
 def cambiar_estado_pedido(request, pedido_id, nuevo_estado):
+    print("cambiar_estado_pedido")
     pedido = get_object_or_404(Pedido, id = pedido_id)
     pedido.estado = nuevo_estado
     pedido.save()
