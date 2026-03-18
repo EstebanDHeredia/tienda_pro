@@ -1,5 +1,5 @@
 from django.urls import path
-from .views import ListaProductosView, DetalleProductoView, agregar_producto, ver_carrito,eliminar_producto, limpiar_carrito,  sumar_item, restar_item, pedido_crear,pedido_confirmado, dashboard_ventas, lista_pedidos, cambiar_estado_pedido
+from .views import ListaProductosView, DetalleProductoView, agregar_producto, ver_carrito,eliminar_producto, limpiar_carrito,  sumar_item, restar_item, pedido_crear,pedido_confirmado, dashboard_ventas, lista_pedidos, cambiar_estado_pedido, aplicar_cupon, eliminar_cupon
 
 urlpatterns = [
     path('', ListaProductosView.as_view(), name='lista'),
@@ -16,6 +16,8 @@ urlpatterns = [
     path('dashboard/', dashboard_ventas, name='dashboard'),
     path('pedidos/', lista_pedidos, name='lista_pedidos'),
     path('pedidos/estado/<int:pedido_id>/<str:nuevo_estado>', cambiar_estado_pedido, name='cambiar_estado'),
+    path('cupon/aplicar/', aplicar_cupon, name='aplicar_cupon'),
+    path('cupon/eliminar/', eliminar_cupon, name='eliminar_cupon'),
     
 ]
 

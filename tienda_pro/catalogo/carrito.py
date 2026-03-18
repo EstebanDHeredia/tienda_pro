@@ -1,15 +1,23 @@
 from decimal import Decimal
-from .models import Producto
+from .models import Producto, Cupon
 
 class Carrito:
     def __init__(self, request):
         self.request = request
         self.session = request.session
         carrito = self.session.get('carrito')
+        
         if not carrito:
             carrito = self.session['carrito'] = {}
         self.carrito = carrito
-
+        
+        self.cupon_id = self.session.get('cupon_id', None)
+    
+    def aplicar_cupon(self, cupon_id):
+        self.session['cupon_id'] = cupon_id
+        self.cupon_id = cupon_id
+        self.session.modified = True
+    
     def agregar(self, producto, cantidad=1):
         id_prod = str(producto.id)
 
@@ -86,5 +94,31 @@ class Carrito:
             lista_detallada.append(item)
 
         return lista_detallada
+    
+    @property
+    def cupon(self):
+        if self.cupon_id:
+            try:
+                return Cupon.objects.get(id=self.cupon_id)
+            except Cupon.DoesNotExist:
+                return None
+        return None
+    
+    def eliminar_cupon(self):
+        if 'cupon_id' in self.session:
+            del self.session['cupon_id']
+            self.cupon_id = None
+            self.session.modified = True
+    
+    @property
+    def descuento_total(self):
+        if self.cupon and self.cupon.es_valido:
+            return self.total_pagar * (Decimal(self.cupon.descuento_porcentaje) / Decimal(100))
+        return Decimal('0')
+        
+    @property
+    def total_con_descuento(self):
+        # El total que el cliente ve en el carrito
+        return self.total_pagar - self.descuento_total
     
     

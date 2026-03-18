@@ -9,7 +9,7 @@ import json
 from urllib.parse import quote
 from django.shortcuts import redirect, get_object_or_404, render
 from django.views.generic import ListView, DetailView
-from .models import Producto, DetallePedido, Pedido
+from .models import Producto, DetallePedido, Pedido, Cupon
 from .carrito import Carrito
 from django.db.models import Q
 from django.db.models import Sum, Count
@@ -113,10 +113,7 @@ def limpiar_carrito(request):
     carrito.limpiar()
     return redirect('ver_carrito')
   
-  
-  # Esta función estaba en views.py
-  # No se utiliza mas porque ahora usamos pedido_crear y pedido_confirmado
-    
+     
 def sumar_item(request, producto_id):
     carrito = Carrito(request)
     producto = get_object_or_404(Producto, id=producto_id)
@@ -142,9 +139,21 @@ def pedido_crear(request):
         form = PedidoCreateForm(request.POST)
         if form.is_valid():
             # Creo el objeto pedido
-            pedido = form.save(commit=False)
-            pedido.total = carrito.total_pagar
-            pedido.save() # Ahora lo guardamos en la BD y se le da una ID
+            pedido = form.save(commit=False) # Crea el objeto pero todavia no lo guarda
+            pedido.total = carrito.total_con_descuento
+            
+            cupon_id = request.session.get('cupon_id')
+            if cupon_id:
+                try:
+                    cupon = Cupon.objects.get(id=cupon_id)
+                    if cupon.es_valido:
+                        pedido.cupon = cupon
+                        pedido.descuento_aplicado = carrito.descuento_total
+                        del request.session['cupon_id']
+                except Cupon.DoesNotExist:
+                    pass
+            
+            pedido.save() # Ahora lo guardamos en la BD (antes llama a las signals pre_save, calcula el descuento y modifica el total si hay un cupon) y se le da una ID
             
             # Guardamos cada item del carrito en DetallePedido
             for item in carrito.productos_detalle:
@@ -186,6 +195,10 @@ def pedido_confirmado(request):
         mensaje += f"  Subtotal: ${item.obtener_costo()}\n\n"
     
     mensaje += "===========================\n"
+    if pedido.cupon:
+        mensaje += f"🎟️ Cupón aplicado: {pedido.cupon.codigo} ({pedido.cupon.descuento_porcentaje}%)\n"
+        mensaje += f"💸 Descuento: -${pedido.descuento_aplicado}\n"
+        mensaje += "---------------------------\n"
     mensaje += f"💰 *TOTAL: ${pedido.total}*\n"
     mensaje += "===========================\n\n"
     mensaje += "Gracias por tu compra!"  
@@ -331,7 +344,48 @@ def cambiar_estado_pedido(request, pedido_id, nuevo_estado):
     messages.success(request, f"Pedido #{pedido.id} marcado como {nuevo_estado}.")
     return redirect('lista_pedidos')
     
+def aplicar_cupon(request):
+    cart = Carrito(request)
+    if request.method == 'POST':
+        codigo = request.POST.get('codigo', '').strip()
+        print("------------------------------")
+        print(f"DEBUG: {codigo}")
+        print("-------------------------------")
+        try:
+            cupon = Cupon.objects.get(codigo__iexact=codigo)
+            print(f"DEBUG: objeto CUPON:{cupon}")
+            if cupon.es_valido:
+                cart.aplicar_cupon(cupon.id)
+                messages.success(request, f"Descuento del {cupon.descuento_porcentaje}% aplicado.")
+            else:
+                messages.error(request, "Este cupón ya expiró o no tiene mas usos.")
+        except:
+            messages.error(request, "El código de cupón no existe.")                
+        
+        return redirect('ver_carrito')
+def eliminar_cupon(request):
+    cart = Carrito(request)
+    cart.eliminar_cupon()
+    messages.success(request, "Cupón eliminado.")
+    return redirect('ver_carrito')
 
+
+
+# def sumar_item(request, producto_id):
+    # producto = get_object_or_404(Producto, id=producto_id)
+    
+    # fue_posible = carrito.agregar(producto=producto)
+
+    # if not fue_posible:
+    #     messages.error(request, f"⚠️ !Lo sentimos! No hay más stock de {producto.nombre}. ")
+    # else:   
+    #     messages.success(request, f"✅ Se agregó una unidad de {producto.nombre}.")
+    
+    # return redirect('ver_carrito')
+
+
+
+    return redirect('ver_carrito')
 
 # def finalizar_pedido(request):
 #     carrito = Carrito(request)

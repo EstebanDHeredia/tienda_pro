@@ -52,10 +52,41 @@
         </div>
 
         <div class="carrito-resumen">
-            <div class="resumen-info">
-                <p class="total-label">Total a pagar:</p>
-                <p class="total-monto">${{ carrito.total_pagar }}</p>
+            <form action="{% url 'aplicar_cupon' %}" method="POST" class="form-cupon">
+                {% csrf_token %}
+                {% if carrito.cupon %}
+                    <div class="cupon-aplicado">
+                        <div class="cupon-info">
+                            <span class="cupon-badge">🎟️ {{ carrito.cupon.codigo }}</span>
+                            <span class="cupon-descuento">-{{ carrito.cupon.descuento_porcentaje }}%</span>
+                        </div>
+                        <a href="{% url 'eliminar_cupon' %}" class="btn-quitar-cupon">✕</a>
+                    </div>
+                {% else %}
+                    <div class="input-group">
+                        <input type="text" name="codigo" class="form-control" placeholder="¿Tienes un cupón?">
+                        <button class="btn btn-cupon" type="submit">Aplicar</button>
+                    </div>
+                {% endif %}
+            </form>
+            
+            <div class="resumen-detalles">
+                <div class="resumen-linea">
+                    <span>Subtotal</span>
+                    <span>${{ carrito.total_pagar|floatformat:2 }}</span>
+                </div>
+                {% if carrito.cupon %}
+                <div class="resumen-linea descuento">
+                    <span>Descuento ({{ carrito.cupon.codigo }})</span>
+                    <span>-${{ carrito.descuento_total|floatformat:2 }}</span>
+                </div>
+                {% endif %}
+                <div class="resumen-linea total">
+                    <span>Total a pagar    </span>
+                    <span>     ${{ carrito.total_con_descuento|floatformat:2 }}</span>
+                </div>
             </div>
+            
             <div class="carrito-botones">
                 <a href="#" class="btn-vaciar" onclick="mostrarModalVaciar(event)">
                     🗑️ Vaciar carrito
@@ -105,4 +136,110 @@ document.getElementById('modalVaciar').addEventListener('click', function(e) {
     }
 });
 </script>
+
+<style>
+    .form-cupon {
+        margin-bottom: 20px;
+    }
+    .form-cupon .input-group {
+        display: flex;
+        gap: 10px;
+    }
+    .form-cupon input {
+        flex: 1;
+        padding: 12px 15px;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        font-size: 14px;
+    }
+    .form-cupon input:focus {
+        outline: none;
+        border-color: #3498db;
+    }
+    .btn-cupon {
+        padding: 12px 24px;
+        background: #2ecc71;
+        color: white;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-weight: bold;
+        transition: background 0.3s;
+    }
+    .btn-cupon:hover {
+        background: #27ae60;
+    }
+    
+    .cupon-aplicado {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        background: linear-gradient(135deg, #d5f4e6 0%, #ebf9f1 100%);
+        border: 2px solid #2ecc71;
+        border-radius: 10px;
+        padding: 12px 15px;
+    }
+    .cupon-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .cupon-badge {
+        background: #2ecc71;
+        color: white;
+        padding: 6px 14px;
+        border-radius: 20px;
+        font-weight: bold;
+        font-size: 0.9rem;
+    }
+    .cupon-descuento {
+        color: #27ae60;
+        font-weight: bold;
+        font-size: 1.1rem;
+    }
+    .btn-quitar-cupon {
+        background: none;
+        border: none;
+        color: #e74c3c;
+        font-size: 1.2rem;
+        cursor: pointer;
+        padding: 5px 10px;
+        border-radius: 50%;
+        transition: background 0.3s;
+    }
+    .btn-quitar-cupon:hover {
+        background: #fadbd8;
+    }
+    
+    .resumen-detalles {
+        background: #f8f9fa;
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+    }
+    .resumen-linea {
+        display: flex;
+        justify-content: space-between;
+        gap: 15px;
+        padding: 10px 0;
+        font-size: 1rem;
+        color: #555;
+        border-bottom: 1px solid #eee;
+    }
+    .resumen-linea:last-child {
+        border-bottom: none;
+    }
+    .resumen-linea.descuento {
+        color: #27ae60;
+        font-weight: 600;
+    }
+    .resumen-linea.total {
+        font-size: 1.3rem;
+        font-weight: bold;
+        color: #2c3e50;
+        padding-top: 15px;
+        margin-top: 10px;
+        border-top: 2px solid #ddd;
+    }
+</style>
 {% endblock %}

@@ -2,6 +2,8 @@ from django.db.models.signals import post_save, post_delete, pre_save
 from django.dispatch import receiver
 from .models import Pedido, DetallePedido
 from django.db.models import F
+from decimal import Decimal
+
 
 # Señal 1: Restar Stock al crear el detalle
 @receiver(post_save, sender=DetallePedido)
@@ -63,4 +65,43 @@ def devolver_stock_al_borrar(sender, instance, **kwargs):
         producto = instance.producto
         producto.stock = F('stock') + instance.cantidad
         producto.save()
-        
+
+@receiver(pre_save, sender=Pedido)
+def aplicar_descuento_cupon(sender, instance, **kwargs):
+    #Tengo que verificar que el descuento ya no esté aplicado,
+    #Porque esta señal se ejecuta nuevamente cuando se cambia el estado del cupón 
+    #Entonces si el pedido tiene un cupón guardado es que ya se le hizo el descuento y no corresponde hacerlo nuevamente
+    if instance.id:
+        pedido_previo = Pedido.objects.get(id=instance.id)
+
+        if pedido_previo.cupon: #Ya tiene un cupon guardado, no debo hacer el calculo de cupon de nuevo
+            pass
+        else:
+                
+            # Solo calculo el descuento si hay un cupon asignado
+            if instance.cupon and instance.cupon.es_valido:
+                # 1. Calculo el monto a descontar
+                porcentaje = Decimal(instance.cupon.descuento_porcentaje)
+                descuento = instance.total * (porcentaje / Decimal(100))
+                
+                # 2. Guardo para el registro cuánto descontó
+                instance.descuento_aplicado = descuento
+                
+                # 3. Restamos el descuento al total del pedido
+                instance.total = instance.total - descuento
+            else:
+                # No hay cupon, el descuento es 0
+                instance.descuento_aplicado = 0
+
+@receiver(pre_save, sender=Pedido)
+def aumentar_uso_cupon(sender, instance, **kwargg):
+    if instance.id:
+        pedido_previo = Pedido.objects.get(id=instance.id)
+
+        # Si el pedido pasa de cualquier estado a 'pagado'
+        if pedido_previo.estado != 'pagado' and instance.estado == 'pagado':
+            if instance.cupon:
+                # uso F() para evitar colisiones
+                instance.cupon.usos_actuales = F('usos_actuales') + 1
+                instance.cupon.save()
+                

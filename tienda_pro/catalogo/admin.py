@@ -1,6 +1,6 @@
 from django.utils.html import format_html
 from django.contrib import admin
-from .models import Categoria, Producto, ImagenProducto, DetallePedido, Pedido
+from .models import Categoria, Producto, ImagenProducto, DetallePedido, Pedido, Cupon
 
 
 
@@ -54,24 +54,35 @@ class PedidoAdmin(admin.ModelAdmin):
         return format_html(
             '<span style="background-color: {}; color: white; padding: 5px 10px; border-radius: 12px; font-weight: bold; text-transform: uppercase; font-size: 10px;">{}</span>',
             color,
-            obj.get_estado_display() # Muestra el texto legible (ej: "Pendiente de Pago") de la tupla que creamos para los estados. Si pusiera obj.estado me devolveria 'pendiente'. Django genera automáticamente estas funciones get_CAMPO_display() para cualquier campo que tenga choices.
+            obj.get_estado_display()
         )
     
-    colorear_estado.short_description = 'Estado' # Título de la columna
+    colorear_estado.short_description = 'Estado'
+    
+    def mostrar_cupon(self, obj):
+        if obj.cupon:
+            return format_html(
+                '<span style="background-color: #2ecc71; color: white; padding: 3px 8px; border-radius: 10px; font-size: 11px;">{} (-{}%)</span>',
+                obj.cupon.codigo,
+                obj.cupon.descuento_porcentaje
+            )
+        return '-'
+    
+    mostrar_cupon.short_description = 'Cupón'
+    
+    def total_final(self, obj):
+        return f"${obj.total - obj.descuento_aplicado:,.2f}"
+    
+    total_final.short_description = 'Total Final'
         
-    # Qué columnas se ven en la tabla principal
-    list_display = ['id', 'nombre', 'apellido', 'fecha','total', 'colorear_estado']
+    list_display = ['id', 'nombre', 'apellido', 'fecha', 'mostrar_cupon', 'descuento_aplicado', 'total_final', 'colorear_estado']
 
-    # Buscador por nombre de cliente o ID de pedido
     search_fields = ['nombre', 'apellido', 'id']
     
-    # Filtros laterales para encontrar pedidos rápido
-    list_filter = ['estado', 'fecha']
+    list_filter = ['estado', 'fecha', 'cupon']
     
-    # Hacemos que el estado sea editable desde la lista sin entrar al pedido
     list_editable = []
     
-    # Ordenar la tabla por fecha de pedido
     ordering = ['-fecha']
     
     inlines = [DetallePedidoInline]
@@ -81,12 +92,23 @@ class PedidoAdmin(admin.ModelAdmin):
             'fields': ('nombre', 'apellido', 'telefono', 'direccion'),
             'classes': ('wide',),
         }),
+        ('Cupón Aplicado', {
+            'fields': ('cupon', 'descuento_aplicado'),
+            'classes': ('wide',),
+        }),
         ('Estado y Totales', {
             'fields': ('estado', 'total'),
             'description': 'Recuerda que al cambiar a <b>Pagado</b> se descontará el stock.'
         }),
     )
-    readonly_fields = ['total', 'fecha'] # Evita errores humanos
+    readonly_fields = ['total', 'fecha', 'descuento_aplicado']
+
+@admin.register(Cupon)
+class CuponAdmin(admin.ModelAdmin):
+    list_display = ['codigo', 'descuento_porcentaje', 'valido_hasta', 'usos_actuales', 'limite_usos', 'activo']
+    list_filter = ['activo', 'valido_hasta']
+    search_fields = ['codigo']
+    
     
     # BORRA ESTO DE ACÁ, TODA LA LOGICA DEL NEGOCIO DEBE ESTAR CENTRALIZADA, Y LA MISMA ESTÁ EN SIGNALS
     # def save_model(self, request, obj, form, change):

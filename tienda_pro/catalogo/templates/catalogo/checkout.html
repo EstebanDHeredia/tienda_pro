@@ -75,14 +75,49 @@
             <div class="resumen-footer">
                 <div class="subtotal-line">
                     <span>Subtotal</span>
-                    <span>${{ carrito.total_pagar }}</span>
+                    <span>${{ carrito.total_pagar|floatformat:2 }}</span>
                 </div>
+                {% if carrito.cupon %}
+                <div class="descuento-line">
+                    <span>Descuento ({{ carrito.cupon.codigo }})</span>
+                    <span>-${{ carrito.descuento_total|floatformat:2 }}</span>
+                </div>
+                {% endif %}
                 <div class="total-line">
                     <span>Total a pagar</span>
-                    <span class="total-monto">${{ carrito.total_pagar }}</span>
+                    <span class="total-monto">${{ carrito.total_con_descuento|floatformat:2 }}</span>
                 </div>
             </div>
             </div>
         </div>
     </div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+    .descuento-line {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        color: #27ae60;
+        font-weight: 600;
+        border-bottom: 1px solid #eee;
+    }
+    .subtotal-line {
+        display: flex;
+        justify-content: space-between;
+        padding: 8px 0;
+        border-bottom: 1px solid #eee;
+    }
+    .total-line {
+        display: flex;
+        justify-content: space-between;
+        padding: 15px 0 5px;
+        font-size: 1.2rem;
+        font-weight: bold;
+        color: #2c3e50;
+        border-top: 2px solid #ddd;
+        margin-top: 5px;
+    }
+</style>
 {% endblock %}
