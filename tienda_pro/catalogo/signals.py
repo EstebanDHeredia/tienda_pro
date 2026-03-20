@@ -1,3 +1,17 @@
+"""
+Señales Django para la aplicación catalogo.
+
+Las señales permiten ejecutar código automáticamente cuando ocurre
+un evento en los modelos (crear, guardar, eliminar).
+
+Señales definidas:
+1. restar_stock_al_crear: Descuenta stock al crear DetallePedido
+2. devolver_stock_al_cancelar: Devuelve stock al cancelar/reactivar pedido
+3. devolver_stock_al_borrar: Devuelve stock al eliminar DetallePedido
+4. aplicar_descuento_cupon: Aplica descuento del cupón al pedido
+5. aumentar_uso_cupon: Incrementa contador de usos del cupón
+"""
+
 from django.db.models.signals import post_save, post_delete, pre_save
 from django.dispatch import receiver
 from .models import Pedido, DetallePedido
@@ -5,46 +19,79 @@ from django.db.models import F
 from decimal import Decimal
 
 
-# Señal 1: Restar Stock al crear el detalle
+# =============================================================================
+# SEÑALES DE GESTIÓN DE STOCK
+# =============================================================================
+
 @receiver(post_save, sender=DetallePedido)
 def restar_stock_al_crear(sender, instance, created, **kwargs):
-    # Cuando se cread un Detalle de pedido se resta el stock del producto
-    # Esto es importante porque si despues modifico por ej la direccion del cliente en el pedido 
-    # esta señal se va a volver a ejecutar y no quiero que reste nuevamente la cantidad al stock del producto
-    # Esto solo debe suceder cuando se crea el pedido
-    if created: 
-        print(f"DEBUG: Estoy creando el detalle {instance.id}")
+    """
+    Descuenta el stock del producto cuando se crea un DetallePedido.
+    
+    Esta señal se ejecuta DESPUÉS de guardar un DetallePedido.
+    Solo actúa cuando el detalle es nuevo (created=True).
+    
+    Uso de F() expression:
+        Se usa F('stock') para que la Base de Datos calcule el nuevo valor,
+        evitando problemas de 'Race Condition' (condiciones de carrera)
+        cuando dos usuarios acceden simultáneamente al mismo stock.
+    
+    Args:
+        sender: El modelo que envió la señal (DetallePedido)
+        instance: La instancia de DetallePedido que fue guardada
+        created: Booleano - True si es un objeto nuevo
+        **kwargs: Argumentos adicionales de Django
+    
+    Ejemplo:
+        Si producto.stock = 10 y cantidad = 3,
+        el nuevo stock será 10 - 3 = 7
+    """
+    if created:
         producto = instance.producto
-        producto.stock = F('stock') - instance.cantidad # el motor de la BD hace el calculo de la resta del stock y lo guarda en la BD. Esto me asegura evitar el problema de la Carrera de Datos (cuando 2 usuarios están accediendo al stock del producto al mismo tiempo)
+        producto.stock = F('stock') - instance.cantidad
         producto.save()
 
-# Señal 2: devolver el stock si se cancela un pedido
+
 @receiver(pre_save, sender=Pedido)
 def devolver_stock_al_cancelar(sender, instance, **kwargs):
-    # Si un pedido cambia su estado a cancelado, devuelvo el stock de todos los productos que haya en ese pedido
+    """
+    Gestiona el stock cuando cambia el estado de un pedido.
     
-    if instance.id: # se ejecuta solo si el pedido ya existe(es una edicion)
+    Esta señal se ejecuta ANTES de guardar un Pedido.
+    
+    Comportamientos:
+    1. Al CANCELAR (cualquier estado → cancelado):
+       - Devuelve el stock a todos los productos del pedido
+    
+    2. Al REACTIVAR (cancelado → otro estado):
+       - Descuenta nuevamente el stock de los productos
+    
+    El pedido debe existir previamente (instance.id existe).
+    Si es un pedido nuevo, no hace nada.
+    
+    Args:
+        sender: El modelo que envió la señal (Pedido)
+        instance: La instancia de Pedido a guardar
+        **kwargs: Argumentos adicionales de Django
+    
+    Validación:
+        Solo actúa si el pedido ya existe en la BD (para comparar estados).
+    """
+    if instance.id:
         try:
-            # busco el pedido como está actualmente en la BD, antes de que cambie, para saber en que estado estaba
-            # previo al cambio. Esto sirve por ejemplo para saber si el pedido ya estaba cancelado anteriormente y ahora solo
-            # estoy modificando por ejemplo el tel del cliente, en este caso como el pedido ya estaba cancelado, no debo volver a sumar
-            # el stock al producto
-            
+            # Obtener estado actual del pedido ANTES del cambio
             pedido_previo = Pedido.objects.get(id=instance.id)
-
-            # buscamos el cambio exacto: de cualquier estado a 'cancelado'
+            
+            # Caso 1: Cancelar pedido
             if pedido_previo.estado != 'cancelado' and instance.estado == 'cancelado':
-                print(f"Estoy cancelando el pedido: de {pedido_previo.estado} a {instance.estado}")
-                # Busco todos los detallePedido de ese pedido (aca uso el related_name del modelo DetallePedido : pedido = models.ForeignKey(Pedido, related_name='items'.....
                 productos_pedido = instance.items.all()
                 for item in productos_pedido:
                     producto = item.producto
                     producto.stock = F('stock') + item.cantidad
                     producto.save()
             
-            # Si el pedido estaba cancelado y lo vuelven a activar, resto el stock
-            elif pedido_previo.estado == 'cancelado' and instance.estado != 'cancelado': 
-                print(f"Estoy activando el pedido: de {pedido_previo.estado} a {instance.estado}")
+            # Caso 2: Reactivar pedido cancelado
+            elif pedido_previo.estado == 'cancelado' and instance.estado != 'cancelado':
                 productos_pedido = instance.items.all()
                 for item in productos_pedido:
                     producto = item.producto
@@ -54,54 +101,117 @@ def devolver_stock_al_cancelar(sender, instance, **kwargs):
         except Pedido.DoesNotExist:
             pass
 
-# Señal 3: devuelvo el stock si se borra el pedido o el detallepedido:
+
 @receiver(post_delete, sender=DetallePedido)
 def devolver_stock_al_borrar(sender, instance, **kwargs):
-    # Si se borra manualmente un pedido o detallePedido, regreso el stock al producto
+    """
+    Devuelve el stock al eliminar un DetallePedido.
     
-    # Primero veo si el pedido no estaba cancelado, ya que si es asi no debo devolver el stock, ya se que hace en la señal anterior
-    if instance.pedido.estado !='cancelado':
-        print("Estoy borrando el detalle")
+    Esta señal se ejecuta DESPUÉS de eliminar un DetallePedido.
+    
+    Condición:
+        Solo devuelve stock si el pedido NO estaba cancelado,
+        ya que si estaba cancelado, el stock ya fue devuelto
+        por la señal 'devolver_stock_al_cancelar'.
+    
+    Args:
+        sender: El modelo que envió la señal (DetallePedido)
+        instance: La instancia de DetallePedido que fue eliminada
+        **kwargs: Argumentos adicionales de Django
+    
+    Ejemplo:
+        Si producto.stock = 7 y cantidad = 3,
+        el nuevo stock será 7 + 3 = 10
+    """
+    # Solo devolver stock si el pedido no estaba cancelado
+    if instance.pedido.estado != 'cancelado':
         producto = instance.producto
         producto.stock = F('stock') + instance.cantidad
         producto.save()
 
+
+# =============================================================================
+# SEÑALES DE GESTIÓN DE CUPONES
+# =============================================================================
+
 @receiver(pre_save, sender=Pedido)
 def aplicar_descuento_cupon(sender, instance, **kwargs):
-    #Tengo que verificar que el descuento ya no esté aplicado,
-    #Porque esta señal se ejecuta nuevamente cuando se cambia el estado del cupón 
-    #Entonces si el pedido tiene un cupón guardado es que ya se le hizo el descuento y no corresponde hacerlo nuevamente
+    """
+    Aplica el descuento del cupón al guardar un Pedido.
+    
+    Esta señal se ejecuta ANTES de guardar un Pedido.
+    
+    Comportamiento:
+        Solo actúa si el pedido tiene un cupón asignado Y
+        el pedido NO tenía cupón previamente (para evitar
+        recalcular el descuento si ya fue aplicado).
+    
+    Cálculo del descuento:
+        descuento = total * (porcentaje / 100)
+    
+    Campos modificados:
+        - descuento_aplicado: Monto del descuento
+        - total: Total original - descuento
+    
+    Args:
+        sender: El modelo que envió la señal (Pedido)
+        instance: La instancia de Pedido a guardar
+        **kwargs: Argumentos adicionales de Django
+    """
     if instance.id:
-        pedido_previo = Pedido.objects.get(id=instance.id)
-
-        if pedido_previo.cupon: #Ya tiene un cupon guardado, no debo hacer el calculo de cupon de nuevo
-            pass
-        else:
-                
-            # Solo calculo el descuento si hay un cupon asignado
-            if instance.cupon and instance.cupon.es_valido:
-                # 1. Calculo el monto a descontar
-                porcentaje = Decimal(instance.cupon.descuento_porcentaje)
-                descuento = instance.total * (porcentaje / Decimal(100))
-                
-                # 2. Guardo para el registro cuánto descontó
-                instance.descuento_aplicado = descuento
-                
-                # 3. Restamos el descuento al total del pedido
-                instance.total = instance.total - descuento
+        try:
+            pedido_previo = Pedido.objects.get(id=instance.id)
+            
+            # Si el pedido anterior ya tenía cupón, no recalcular
+            if pedido_previo.cupon:
+                pass
             else:
-                # No hay cupon, el descuento es 0
-                instance.descuento_aplicado = 0
+                # Solo aplicar si hay cupón válido
+                if instance.cupon and instance.cupon.es_valido:
+                    porcentaje = Decimal(instance.cupon.descuento_porcentaje)
+                    descuento = instance.total * (porcentaje / Decimal(100))
+                    
+                    # Guardar monto del descuento
+                    instance.descuento_aplicado = descuento
+                    
+                    # Restar descuento del total
+                    instance.total = instance.total - descuento
+                else:
+                    instance.descuento_aplicado = Decimal('0')
+                    
+        except Pedido.DoesNotExist:
+            pass
+
 
 @receiver(pre_save, sender=Pedido)
-def aumentar_uso_cupon(sender, instance, **kwargg):
+def aumentar_uso_cupon(sender, instance, **kwargs):
+    """
+    Incrementa el contador de usos del cupón al pagar.
+    
+    Esta señal se ejecuta ANTES de guardar un Pedido.
+    
+    Comportamiento:
+        Cuando un pedido pasa a estado 'pagado' y tiene un cupón,
+        incrementa el contador de usos de ese cupón.
+    
+    Uso de F() expression:
+        Se usa F('usos_actuales') para que la Base de Datos
+        incremente atomicamente, evitando problemas de concurrencia.
+    
+    Args:
+        sender: El modelo que envió la señal (Pedido)
+        instance: La instancia de Pedido a guardar
+        **kwargs: Argumentos adicionales de Django
+    """
     if instance.id:
-        pedido_previo = Pedido.objects.get(id=instance.id)
-
-        # Si el pedido pasa de cualquier estado a 'pagado'
-        if pedido_previo.estado != 'pagado' and instance.estado == 'pagado':
-            if instance.cupon:
-                # uso F() para evitar colisiones
-                instance.cupon.usos_actuales = F('usos_actuales') + 1
-                instance.cupon.save()
-                
+        try:
+            pedido_previo = Pedido.objects.get(id=instance.id)
+            
+            # Solo incrementar si el pedido pasa a 'pagado'
+            if pedido_previo.estado != 'pagado' and instance.estado == 'pagado':
+                if instance.cupon:
+                    instance.cupon.usos_actuales = F('usos_actuales') + 1
+                    instance.cupon.save()
+                    
+        except Pedido.DoesNotExist:
+            pass
