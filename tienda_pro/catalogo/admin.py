@@ -75,7 +75,7 @@ class PedidoAdmin(admin.ModelAdmin):
     
     total_final.short_description = 'Total Final'
         
-    list_display = ['id', 'nombre', 'apellido', 'fecha', 'mostrar_cupon', 'descuento_aplicado', 'total_final', 'colorear_estado']
+    list_display = ['id', 'nombre', 'apellido', 'fecha', 'mostrar_cupon', 'descuento_aplicado', 'total', 'colorear_estado']
 
     search_fields = ['nombre', 'apellido', 'id']
     

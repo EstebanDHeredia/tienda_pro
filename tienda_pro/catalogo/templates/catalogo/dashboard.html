@@ -27,6 +27,106 @@
         </div>
     </div>
 
+    
+    <div class="db-grid-stats" style="margin-top: 20px;">
+        <div class="stat-card" style="border-left: 5px solid #2ecc71;">
+            <span class="stat-label">Inversión en Descuentos</span>
+            <span class="stat-value text-green">-${{ total_descuentos|stringformat:".2f" }}</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">Pedidos con Cupón</span>
+            <span class="stat-value">{{ pedidos_con_cupon }}</span>
+        </div>
+        <div class="stat-card">
+            <span class="stat-label">% Uso de Cupones</span>
+            <span class="stat-value">{{ pedidos_con_cupon|default:0 }} de {{ total_pedidos }}</span>
+        </div>
+    </div>
+
+    <div class="db-grid-main" style="margin-top: 20px;">
+        <div class="db-panel">
+            <h3>🎟️ Rendimiento de Cupones</h3>
+            <table class="db-table">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Descuento</th>
+                        <th>Usos</th>
+                        <th>Límite</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for c in cupones_top %}
+                    <tr>
+                        <td><strong>{{ c.codigo }}</strong></td>
+                        <td>{{ c.descuento_porcentaje }}%</td>
+                        <td>{{ c.usos_actuales }}</td>
+                        <td>{{ c.limite_usos }}</td>
+                        <td>
+                            {% if c.es_valido %}
+                                <span class="badge-success">Activo</span>
+                            {% else %}
+                                <span class="badge-danger">Expirado/Lleno</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+<div class="db-panel" style="margin-top: 20px; max-width: 500px; margin-left: auto; margin-right: auto;">
+    <h3 style="text-align: center;">💰 Composición de Ventas</h3>
+    <canvas id="graficoVentas"></canvas>
+</div>
+
+<script>
+    const ctx = document.getElementById('graficoVentas').getContext('2d');
+    const myChart = new Chart(ctx, {
+        type: 'doughnut', // Gráfico de tipo "dona"
+        data: {
+            labels: ['Ingreso Real (Neto)', 'Descuentos Aplicados'],
+            datasets: [{
+                data: [{{ ingreso_neto }}, {{ total_descuentos }}],
+                backgroundColor: [
+                    '#2ecc71', // Verde para el dinero que entró
+                    '#e74c3c'  // Rojo para lo que se descontó
+                ],
+                borderWidth: 2,
+                hoverOffset: 10
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            let label = context.label || '';
+                            if (label) label += ': ';
+                            if (context.parsed !== null) {
+                                label += new Intl.NumberFormat('es-AR', { 
+                                    style: 'currency', 
+                                    currency: 'ARS' 
+                                }).format(context.parsed);
+                            }
+                            return label;
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+
+
+
+
     <div class="db-grid-main">
         <div class="db-panel">
             <h3>🏆 Top 5 más vendidos</h3>

@@ -313,6 +313,18 @@ def pedido_crear(request):
     if request.method == 'POST':
         form = PedidoCreateForm(request.POST)
         if form.is_valid():
+            # Valido stock nuevamente para controlar que realmente este disponible
+            for item in carrito.productos_detalle:
+                producto_db = item['producto'] # El objeto Producto que viene de la BD
+                cantidad_solicitada = item['cantidad']
+
+                if producto_db.stock < cantidad_solicitada:
+                    messages.error(
+                        request,
+                        f"Lo sentimos, el producto '{producto_db.nombre}' ya no tiene stock suficiente (Disponible: {producto_db.stock})."
+                    )
+                    return redirect('ver_carrito')
+
             # Crear objeto pedido sin guardarlo aún
             pedido = form.save(commit=False)
             
@@ -506,7 +518,31 @@ def dashboard_ventas(request):
         total_recaudado_prod=Sum('subtotal_detalle')
     ).order_by('-total_recaudado_prod').first()
     
+    # Total de dinero en descuentos de cupones
+    total_descuentos = Pedido.objects.filter(
+        estado__in = ['pendiente', 'pagado']
+    ).aggregate(Sum('descuento_aplicado'))['descuento_aplicado__sum'] or 0
+    
+    # Cantidad de pedidon que usaton cupon
+    pedidos_con_cupon = Pedido.objects.filter(
+        cupon__isnull = False
+    ).exclude(estado='cancelado').count()
+    
+    # Cupones mas utilizados 
+    cupones_top = Cupon.objects.filter(activo = True).order_by('-usos_actuales')[:5]
+    
+    # Total de pedidos validos (no 'cancelados')
+    total_pedidos = Pedido.objects.exclude(estado = 'cancelado').count()
+    
+    # Ingreso neto es igual a lo total recaudado - el total de descuentos
+    ingreso_neto = float(total_recaudado) - float(total_descuentos)
+
     context = {
+        'ingreso_neto': ingreso_neto,
+        'total_pedidos': total_pedidos,
+        'total_descuentos': total_descuentos,
+        'pedidos_con_cupon': pedidos_con_cupon,
+        'cupones_top': cupones_top,
         'total_recaudado': total_recaudado,
         'conteo_estados': conteo_estados,
         'productos_top': productos_top,
