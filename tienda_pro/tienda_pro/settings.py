@@ -129,3 +129,10 @@ import os
 
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
+
+
+# Redirigir al historial después de login
+LOGIN_REDIRECT_URL = 'lista' 
+
+# Redirigir al inicio después de logout
+LOGOUT_REDIRECT_URL = 'lista'

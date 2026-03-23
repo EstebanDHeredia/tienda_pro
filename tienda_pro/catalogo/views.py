@@ -22,6 +22,9 @@ from django.db.models import Q
 from django.db.models import Sum, Count
 from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import F
+from django.contrib.auth.decorators import login_required
+from django.contrib.auth.forms import UserCreationForm
+from django.contrib.auth import login
 
 
 # =============================================================================
@@ -324,9 +327,13 @@ def pedido_crear(request):
                         f"Lo sentimos, el producto '{producto_db.nombre}' ya no tiene stock suficiente (Disponible: {producto_db.stock})."
                     )
                     return redirect('ver_carrito')
-
-            # Crear objeto pedido sin guardarlo aún
+            
+            # Crear objeto pedido sin guardarlo 
             pedido = form.save(commit=False)
+
+            # Si hay un usuario logueado, lo guardo dentro del pedido
+            if request.user.is_authenticated:
+                pedido.usuario = request.user            
             
             # Usar total CON descuento
             pedido.total = carrito.total_con_descuento
@@ -575,6 +582,17 @@ def lista_pedidos(request):
     if filtro_estado:
         pedidos = pedidos.filter(estado=filtro_estado)
     
+    for p in pedidos:
+        texto = (
+            f"Hola {p.nombre}! 👋\n"
+            f"Te hablamos de *Tu tienda*.\n"
+            f"Tu pedido *#{p.id}* está en estado: *{p.get_estado_display()}*.\n"
+            f"Total: ${p.total}\n"
+            f"¡Muchas gracias por tu compra!"
+        )
+        p.whatsapp_url = f"https://wa.me/{p.telefono}?text={quote(texto)}"
+        print(f"DEBUG: {p.whatsapp_url}")
+    
     return render(request, 'catalogo/lista_pedidos.html', {
         'filtro_estado': filtro_estado,
         'pedidos': pedidos
@@ -666,3 +684,23 @@ def eliminar_cupon(request):
     cart.eliminar_cupon()
     messages.success(request, "Cupón eliminado.")
     return redirect('ver_carrito')
+
+@login_required
+def historial_pedidos(request):
+    # Filtro los pedidos del usr que está logueado
+    mis_pedidos = Pedido.objects.filter(usuario = request.user).prefetch_related('items__producto')
+
+    return render(request, 'catalogo/historial.html', {'pedidos': mis_pedidos}) 
+
+def registro (request):
+    if request.method == 'POST':
+        form = UserCreationForm(request.POST)
+        if form.is_valid():
+            user = form.save() # Guardo el usr en la BD
+            login(request, user) # Logueo automaticamente al usr
+            messages.success(request, f'¡Bienvenido {user.username}! Tu cuenta ha sido creada.')
+            return redirect('lista')
+    else:
+        form = UserCreationForm()
+    
+    return render(request, 'registration/registro.html', {'form': form})

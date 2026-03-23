@@ -1,6 +1,7 @@
 from django.db import models
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils import timezone
+from django.contrib.auth.models import User
 
 # Create your models here.
 class Cupon(models.Model):
@@ -75,6 +76,7 @@ class Pedido(models.Model):
     apellido = models.CharField(max_length=50)
     telefono = models.CharField(max_length=20)
     direccion = models.CharField(max_length=200)
+    usuario = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='pedidos', null=True, blank=True)
 
     # Datos del pedido
     fecha = models.DateTimeField(auto_now_add=True)

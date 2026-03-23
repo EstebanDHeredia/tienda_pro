@@ -14,10 +14,60 @@
             </a>
             
             <nav class="navbar-menu">
-                <a href="{% url 'lista' %}" class="nav-link">Catálogo</a>
+                <a href="{% url 'lista' %}" class="nav-link">
+                    <span>📦</span> Catálogo
+                </a>
                 {% if user.is_staff %}
-                <a href="{% url 'dashboard' %}" class="nav-link">📊 Dashboard</a>
-                <a href="{% url 'lista_pedidos' %}" class="nav-link">📋 Pedidos</a>
+                <a href="{% url 'dashboard' %}" class="nav-link nav-admin">
+                    <span>📊</span> Dashboard
+                </a>
+                <a href="{% url 'lista_pedidos' %}" class="nav-link nav-admin">
+                    <span>📋</span> Pedidos
+                </a>
+                <div class="user-menu">
+                    <div class="user-info">
+                        <div class="user-avatar" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+                            <span>{{ user.username|slice:":1"|upper }}</span>
+                        </div>
+                        <div class="user-details">
+                            <span class="user-name">{{ user.username }}</span>
+                            <span class="user-role">Administrador</span>
+                        </div>
+                    </div>
+                    <form action="{% url 'logout' %}" method="post" class="logout-form">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-logout" title="Cerrar sesión">
+                            <span>🚪</span>
+                        </button>
+                    </form>
+                </div>
+                {% elif user.is_authenticated and not user.is_staff %}
+                <div class="user-menu">
+                    <div class="user-info">
+                        <div class="user-avatar">
+                            <span>{{ user.username|slice:":1"|upper }}</span>
+                        </div>
+                        <div class="user-details">
+                            <span class="user-name">Hola, {{ user.username }}</span>
+                            <a href="{% url 'historial' %}" class="user-compras">
+                                <span>🛍️</span> Mis Compras
+                            </a>
+                        </div>
+                    </div>
+                    <form action="{% url 'logout' %}" method="post" class="logout-form">
+                        {% csrf_token %}
+                        <button type="submit" class="btn-logout" title="Cerrar sesión">
+                            <span>🚪</span>
+                        </button>
+                    </form>
+                </div>
+                {% else %}
+                <a href="{% url 'login' %}" class="nav-link nav-login">
+                    <span>🔐</span> Iniciar Sesión
+                </a>
+                <a href="{% url 'registro' %}" class="nav-link nav-register">
+                    <span>🛍️</span> Registrarse
+                </a>
                 {% endif %}
             </nav>
             
@@ -39,9 +89,9 @@
     <div class="container-mensajes">
     {% if messages %}
         {% for message in messages %}
-            <div class="alert alert-{{ message.tags }}">
-                {{ message }}
-            </div>
+        <div class="alert alert-{{ message.tags }}">
+            {{ message }}
+        </div>
         {% endfor %}
     {% endif %}
     </div>
@@ -53,11 +103,285 @@
 
 
 <script>
-    <!-- muestra el message de django por 3 segundos y se borra solo -->
     setTimeout(function() {
         let messages = document.querySelectorAll('.alert');
         messages.forEach(function(m) {
             m.style.display = 'none';
         });
-    }, 3000); // 3 segundos
+    }, 3000);
 </script>
+
+<style>
+    .navbar {
+        background: white;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.08);
+        position: sticky;
+        top: 0;
+        z-index: 1000;
+    }
+
+    .navbar-container {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 30px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        height: 70px;
+    }
+
+    .logo {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        text-decoration: none;
+    }
+
+    .logo-icono {
+        font-size: 2rem;
+    }
+
+    .logo-texto {
+        font-size: 1.4rem;
+        font-weight: 700;
+        color: #2c3e50;
+    }
+
+    .navbar-menu {
+        display: flex;
+        align-items: center;
+        gap: 15px;
+    }
+
+    .nav-link {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 10px 16px;
+        color: #555;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.9rem;
+        border-radius: 10px;
+        transition: all 0.2s ease;
+    }
+
+    .nav-link:hover {
+        background: #f0f2f5;
+        color: #2c3e50;
+    }
+
+    .nav-admin {
+        color: #667eea;
+    }
+
+    .nav-admin:hover {
+        background: rgba(102, 126, 234, 0.1);
+        color: #667eea;
+    }
+
+    .nav-login {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+    }
+
+    .nav-login:hover {
+        background: linear-gradient(135deg, #5a6fd6, #6a4190);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
+    }
+
+    .nav-register {
+        background: linear-gradient(135deg, #2ecc71, #27ae60);
+        color: white;
+    }
+
+    .nav-register:hover {
+        background: linear-gradient(135deg, #27ae60, #229954);
+        color: white;
+        transform: translateY(-2px);
+        box-shadow: 0 4px 15px rgba(46, 204, 113, 0.3);
+    }
+
+    .user-menu {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 15px;
+        background: #f8f9fa;
+        border-radius: 50px;
+        margin-left: 10px;
+    }
+
+    .user-info {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .user-avatar {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 700;
+        font-size: 1rem;
+    }
+
+    .user-details {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .user-name {
+        font-weight: 600;
+        color: #2c3e50;
+        font-size: 0.85rem;
+    }
+
+    .user-compras {
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        color: #667eea;
+        text-decoration: none;
+        font-size: 0.75rem;
+        font-weight: 500;
+        transition: color 0.2s;
+    }
+
+    .user-compras:hover {
+        color: #764ba2;
+    }
+
+    .user-role {
+        font-size: 0.65rem;
+        color: #e74c3c;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .logout-form {
+        margin: 0;
+    }
+
+    .btn-logout {
+        width: 36px;
+        height: 36px;
+        background: #fee2e2;
+        border: none;
+        border-radius: 50%;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 1rem;
+        transition: all 0.2s ease;
+    }
+
+    .btn-logout:hover {
+        background: #ef4444;
+        transform: scale(1.1);
+    }
+
+    .btn-logout:hover span {
+        filter: grayscale(0);
+    }
+
+    .btn-logout span {
+        filter: grayscale(1);
+    }
+
+    .navbar-carrito {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .carrito-boton {
+        position: relative;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 50px;
+        height: 50px;
+        background: #f0f2f5;
+        border-radius: 12px;
+        text-decoration: none;
+        transition: all 0.2s ease;
+    }
+
+    .carrito-boton:hover {
+        background: #e8eaed;
+        transform: scale(1.05);
+    }
+
+    .carrito-icono {
+        font-size: 1.5rem;
+    }
+
+    .carrito-badge {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background: linear-gradient(135deg, #e74c3c, #c0392b);
+        color: white;
+        font-size: 0.7rem;
+        font-weight: 700;
+        padding: 3px 7px;
+        border-radius: 50px;
+        min-width: 20px;
+        text-align: center;
+    }
+
+    .carrito-info {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .carrito-label {
+        font-size: 0.7rem;
+        color: #95a5a6;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .carrito-monto {
+        font-weight: 700;
+        color: #2c3e50;
+        font-size: 1rem;
+    }
+
+    .container-mensajes {
+        max-width: 1400px;
+        margin: 0 auto;
+        padding: 0 30px;
+    }
+
+    .alert {
+        padding: 15px 20px;
+        border-radius: 10px;
+        margin: 20px auto;
+        font-weight: 500;
+    }
+
+    @media (max-width: 992px) {
+        .navbar-container {
+            padding: 0 15px;
+        }
+
+        .navbar-menu {
+            display: none;
+        }
+
+        .user-menu {
+            display: none;
+        }
+    }
+</style>

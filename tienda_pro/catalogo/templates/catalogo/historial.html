@@ -1,0 +1,69 @@
+{% extends 'catalogo/base.html' %}
+
+{% block content %}
+<div class="historial-container" style="max-width: 1000px; margin: 40px auto; padding: 0 20px;">
+    <header style="margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 10px;">
+        <h1>🛍️ Mis Compras</h1>
+        <p>Hola <strong>{{ user.username }}</strong>, aquí puedes ver el estado de tus pedidos.</p>
+    </header>
+
+    {% if pedidos %}
+        <div style="overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
+            <table style="width: 100%; border-collapse: collapse; text-align: left;">
+                <thead style="background: #f8f9fa;">
+                    <tr>
+                        <th style="padding: 15px; border-bottom: 2px solid #dee2e6;">Pedido</th>
+                        <th style="padding: 15px; border-bottom: 2px solid #dee2e6;">Fecha</th>
+                        <th style="padding: 15px; border-bottom: 2px solid #dee2e6;">Estado</th>
+                        <th style="padding: 15px; border-bottom: 2px solid #dee2e6;">Total</th>
+                        <th style="padding: 15px; border-bottom: 2px solid #dee2e6;">Detalle</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for p in pedidos %}
+                    <tr>
+                        <td style="padding: 15px; border-bottom: 1px solid #eee;">#{{ p.id }}</td>
+                        <td style="padding: 15px; border-bottom: 1px solid #eee;">{{ p.fecha|date:"d/m/Y H:i" }}</td>
+                        <td style="padding: 15px; border-bottom: 1px solid #eee;">
+                            <span class="badge badge-{{ p.estado }}">
+                                {{ p.get_estado_display }}
+                            </span>
+                        </td>
+                        <td style="padding: 15px; border-bottom: 1px solid #eee; font-weight: bold;">
+                            ${{ p.total }}
+                        </td>
+                        <td style="padding: 15px; border-bottom: 1px solid #eee;">
+                            <ul style="margin: 0; padding-left: 15px; font-size: 0.85rem; color: #666;">
+                                {% for item in p.items.all %}
+                                    <li>{{ item.cantidad }}x {{ item.producto.nombre }}</li>
+                                {% endfor %}
+                            </ul>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div style="text-align: center; padding: 50px; background: #fdfdfd; border: 2px dashed #ccc; border-radius: 10px;">
+            <p style="font-size: 1.2rem; color: #888;">Todavía no has realizado ninguna compra.</p>
+            <a href="{% url 'lista' %}" class="btn-primario" style="display: inline-block; margin-top: 15px; text-decoration: none; background: #3498db; color: white; padding: 10px 20px; border-radius: 5px;">
+                Ir a la tienda
+            </a>
+        </div>
+    {% endif %}
+</div>
+
+<style>
+    /* Estilos para los estados */
+    .badge {
+        padding: 5px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: bold;
+    }
+    .badge-pendiente { background-color: #fff3cd; color: #856404; }
+    .badge-pagado { background-color: #d4edda; color: #155724; }
+    .badge-cancelado { background-color: #f8d7da; color: #721c24; }
+</style>
+{% endblock %}

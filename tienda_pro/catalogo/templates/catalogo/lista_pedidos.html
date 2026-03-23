@@ -3,7 +3,7 @@
 {% block content %}
 <div class="pedidos-container">
     <header class="pedidos-header">
-        <div>
+        <div class="header-content">
             <h1>📦 Gestión de Pedidos</h1>
             <p class="pedidos-subtitle">Administra y controla todos los pedidos de tu tienda</p>
         </div>
@@ -58,13 +58,21 @@
                     <td>
                         <div class="cliente-cell">
                             <span class="cliente-nombre">{{ pedido.nombre }} {{ pedido.apellido }}</span>
+                            <span class="cliente-direccion">{{ pedido.direccion|truncatechars:30 }}</span>
                         </div>
                     </td>
                     <td>
-                        <span class="telefono">{{ pedido.telefono }}</span>
+                        <a href="{{ pedido.whatsapp_url }}" target="_blank" class="telefono-link">
+                            <span>📱</span> {{ pedido.telefono }}
+                        </a>
                     </td>
                     <td class="text-right">
-                        <span class="total">${{ pedido.total|floatformat:2 }}</span>
+                        <div class="total-cell">
+                            <span class="total">${{ pedido.total|floatformat:2 }}</span>
+                            {% if pedido.cupon %}
+                            <span class="descuento-badge">-{{ pedido.cupon.descuento_porcentaje }}%</span>
+                            {% endif %}
+                        </div>
                     </td>
                     <td class="text-center">
                         <span class="badge badge-{{ pedido.estado }}">
@@ -81,9 +89,12 @@
                             {% endif %}
                             {% if pedido.estado != 'cancelado' %}
                                 <a href="{% url 'cambiar_estado' pedido.id 'cancelado' %}" class="btn-accion btn-danger" title="Cancelar pedido">
-                                    <span>✕</span> Cancelar
+                                    <span>✕</span>
                                 </a>
                             {% endif %}
+                            <a href="{{ pedido.whatsapp_url }}" target="_blank" class="btn-whatsapp-float" title="Enviar recordatorio por WhatsApp">
+                                <span>💬</span>
+                            </a>
                         </div>
                     </td>
                 </tr>
@@ -103,7 +114,7 @@
 <style>
     .pedidos-container {
         padding: 30px;
-        background: #f8f9fa;
+        background: #f0f2f5;
         min-height: 100vh;
     }
 
@@ -112,45 +123,48 @@
         justify-content: space-between;
         align-items: center;
         margin-bottom: 30px;
+        background: white;
+        padding: 25px 30px;
+        border-radius: 16px;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.05);
     }
 
-    .pedidos-header h1 {
-        margin: 0;
-        color: #2c3e50;
-        font-size: 1.8rem;
+    .header-content h1 {
+        margin: 0 0 5px 0;
+        color: #1a1a2e;
+        font-size: 1.6rem;
     }
 
     .pedidos-subtitle {
-        margin: 5px 0 0;
+        margin: 0;
         color: #7f8c8d;
         font-size: 0.9rem;
     }
 
     .pedidos-stats {
         display: flex;
-        gap: 20px;
+        gap: 15px;
     }
 
     .stat-mini {
-        background: white;
+        background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
         padding: 15px 25px;
         border-radius: 12px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05);
         text-align: center;
+        color: white;
     }
 
     .stat-num {
         display: block;
-        font-size: 1.5rem;
+        font-size: 1.8rem;
         font-weight: bold;
-        color: #3498db;
     }
 
     .stat-label {
-        font-size: 0.75rem;
-        color: #7f8c8d;
+        font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
+        opacity: 0.9;
     }
 
     .filtros-container {
@@ -170,44 +184,50 @@
         padding: 10px 18px;
         background: white;
         border: 1px solid #e0e0e0;
-        border-radius: 8px;
+        border-radius: 10px;
         text-decoration: none;
         color: #555;
         font-size: 0.9rem;
+        font-weight: 500;
         transition: all 0.2s ease;
     }
 
     .filtro-btn:hover {
         border-color: #3498db;
         color: #3498db;
+        transform: translateY(-2px);
     }
 
     .filtro-btn.active {
         background: #3498db;
         border-color: #3498db;
         color: white;
+        box-shadow: 0 4px 12px rgba(52, 152, 219, 0.3);
     }
 
     .filtro-btn.pendiente.active {
         background: #f1c40f;
         border-color: #f1c40f;
         color: #000;
+        box-shadow: 0 4px 12px rgba(241, 196, 15, 0.3);
     }
 
     .filtro-btn.pagado.active {
         background: #2ecc71;
         border-color: #2ecc71;
+        box-shadow: 0 4px 12px rgba(46, 204, 113, 0.3);
     }
 
     .filtro-btn.cancelado.active {
         background: #e74c3c;
         border-color: #e74c3c;
+        box-shadow: 0 4px 12px rgba(231, 76, 60, 0.3);
     }
 
     .tabla-container {
         background: white;
         border-radius: 16px;
-        box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+        box-shadow: 0 4px 20px rgba(0,0,0,0.06);
         overflow: hidden;
     }
 
@@ -225,15 +245,19 @@
         padding: 16px 15px;
         text-align: left;
         font-weight: 600;
-        font-size: 0.85rem;
+        font-size: 0.8rem;
         text-transform: uppercase;
         letter-spacing: 0.5px;
     }
 
     .pedidos-table td {
-        padding: 16px 15px;
+        padding: 18px 15px;
         border-bottom: 1px solid #f0f0f0;
         vertical-align: middle;
+    }
+
+    .pedidos-table tbody tr {
+        transition: background 0.2s;
     }
 
     .pedidos-table tbody tr:hover {
@@ -251,8 +275,8 @@
         font-weight: bold;
         color: #3498db;
         background: #ebf5fb;
-        padding: 4px 10px;
-        border-radius: 6px;
+        padding: 5px 12px;
+        border-radius: 8px;
         font-size: 0.85rem;
     }
 
@@ -262,7 +286,7 @@
     }
 
     .fecha {
-        font-weight: 500;
+        font-weight: 600;
         color: #2c3e50;
     }
 
@@ -271,14 +295,40 @@
         color: #95a5a6;
     }
 
+    .cliente-cell {
+        display: flex;
+        flex-direction: column;
+    }
+
     .cliente-nombre {
-        font-weight: 500;
+        font-weight: 600;
         color: #2c3e50;
     }
 
-    .telefono {
+    .cliente-direccion {
+        font-size: 0.8rem;
+        color: #95a5a6;
+        margin-top: 2px;
+    }
+
+    .telefono-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
         color: #7f8c8d;
+        text-decoration: none;
         font-size: 0.9rem;
+        transition: color 0.2s;
+    }
+
+    .telefono-link:hover {
+        color: #25D366;
+    }
+
+    .total-cell {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
     }
 
     .total {
@@ -287,13 +337,23 @@
         font-size: 1.1rem;
     }
 
+    .descuento-badge {
+        background: linear-gradient(135deg, #2ecc71, #27ae60);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        margin-top: 4px;
+    }
+
     .badge {
         display: inline-flex;
         align-items: center;
         gap: 5px;
         padding: 6px 14px;
         border-radius: 20px;
-        font-size: 0.8rem;
+        font-size: 0.75rem;
         font-weight: 600;
         text-transform: capitalize;
     }
@@ -317,14 +377,15 @@
         display: flex;
         gap: 8px;
         justify-content: center;
+        align-items: center;
     }
 
     .btn-accion {
         display: inline-flex;
         align-items: center;
-        gap: 4px;
-        padding: 6px 12px;
-        border-radius: 6px;
+        justify-content: center;
+        padding: 8px 12px;
+        border-radius: 8px;
         text-decoration: none;
         font-size: 0.8rem;
         font-weight: 500;
@@ -339,16 +400,39 @@
     .btn-success:hover {
         background: #1e8449;
         color: white;
+        transform: scale(1.05);
     }
 
     .btn-danger {
         background: #fadbd8;
         color: #c0392b;
+        padding: 8px 10px;
     }
 
     .btn-danger:hover {
         background: #c0392b;
         color: white;
+        transform: scale(1.05);
+    }
+
+    .btn-whatsapp-float {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 38px;
+        height: 38px;
+        background: linear-gradient(135deg, #25D366, #128C7E);
+        color: white;
+        border-radius: 50%;
+        text-decoration: none;
+        font-size: 1.1rem;
+        transition: all 0.3s ease;
+        box-shadow: 0 4px 12px rgba(37, 211, 102, 0.3);
+    }
+
+    .btn-whatsapp-float:hover {
+        transform: scale(1.15) rotate(5deg);
+        box-shadow: 0 6px 20px rgba(37, 211, 102, 0.4);
     }
 
     .empty-state {
@@ -365,7 +449,7 @@
         font-size: 1rem;
     }
 
-    @media (max-width: 768px) {
+    @media (max-width: 992px) {
         .pedidos-header {
             flex-direction: column;
             align-items: flex-start;
@@ -381,8 +465,23 @@
             padding: 12px 8px;
         }
 
+        .cliente-direccion {
+            display: none;
+        }
+    }
+
+    @media (max-width: 768px) {
         .acciones {
             flex-direction: column;
+        }
+
+        .filtros {
+            flex-direction: column;
+        }
+
+        .filtro-btn {
+            width: 100%;
+            justify-content: center;
         }
     }
 </style>
