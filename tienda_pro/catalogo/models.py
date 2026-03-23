@@ -108,4 +108,19 @@ class DetallePedido(models.Model):
     def obtener_costo(self):
         return (self.precio or 0) * (self.cantidad or 0)
 
+class Comentario(models.Model):
+    producto = models.ForeignKey(Producto, on_delete=models.CASCADE, related_name="comentarios")
+    usuario = models.ForeignKey(User, on_delete=models.CASCADE)
+    texto = models.TextField(max_length=500)
+    puntos = models.IntegerField(
+        validators=[MinValueValidator(1), MaxValueValidator(5)],
+        default=5
+    )
+    fecha = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-fecha']
+
+    def __str__(self):
+        return f"{self.usuario.username} en {self.producto.nombre}"
 
