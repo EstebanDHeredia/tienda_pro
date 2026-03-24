@@ -16,7 +16,7 @@ import json
 from urllib.parse import quote
 from django.shortcuts import redirect, get_object_or_404, render
 from django.views.generic import ListView, DetailView
-from .models import Producto, DetallePedido, Pedido, Cupon
+from .models import Producto, DetallePedido, Pedido, Cupon, Comentario
 from .carrito import Carrito
 from django.db.models import Q
 from django.db.models import Sum, Count
@@ -687,12 +687,38 @@ def eliminar_cupon(request):
 
 @login_required
 def historial_pedidos(request):
+    """
+    Muestra el historial de pedidos del usuario logueado.
+
+    Filtro los pedidos del usuario que está logueado y los muestra en una tabla
+    en la plantilla historial.html.
+
+    Parameters:
+        request (Request): La solicitud HTTP
+
+    Returns:
+        HttpResponse: La respuesta HTTP con la plantilla renderizada
+    """
+    
     # Filtro los pedidos del usr que está logueado
     mis_pedidos = Pedido.objects.filter(usuario = request.user).prefetch_related('items__producto')
 
     return render(request, 'catalogo/historial.html', {'pedidos': mis_pedidos}) 
 
 def registro (request):
+    """
+    Vista para crear un nuevo usuario.
+    
+    Proceso:
+    1. GET: Muestra el formulario de registro vacío
+    2. POST: Valida datos, crea el usuario y loguea automáticamente
+    
+    Returns:
+        Redirect a lista (de productos - tienda)
+        
+    Mensajes:
+        - Éxito: '¡Bienvenido {user.username}! Tu cuenta ha sido creada.'
+    """
     if request.method == 'POST':
         form = UserCreationForm(request.POST)
         if form.is_valid():
@@ -704,3 +730,54 @@ def registro (request):
         form = UserCreationForm()
     
     return render(request, 'registration/registro.html', {'form': form})
+
+@login_required
+def agregar_comentario(request, producto_id):
+    """
+    Agrega un comentario a un producto.
+    
+    Proceso:
+    1. GET: No hace nada
+    2. POST: Valida datos, crea el comentario y redirige a la página de detalle del producto
+    
+    Parámetros:
+        request (Request): La solicitud HTTP
+        producto_id (int): El ID del producto al que se le va a agregar el comentario
+        
+    Returns:
+        Redirect a la página de detalle del producto
+        
+    Mensajes:
+        - Éxito: "¡Gracias por tu reseña!"
+    """
+    
+    producto = get_object_or_404(Producto, id=producto_id)
+    if request.method == 'POST':
+        texto = request.POST.get('texto')
+        puntos = request.POST.get('puntos')
+
+        if texto and puntos:
+            Comentario.objects.create(
+                producto = producto,
+                usuario = request.user,
+                texto = texto,
+                puntos=puntos
+            )
+            messages.success(request, "¡Gracias por tu reseña!")
+    
+    return redirect('detalle', pk=producto_id)
+
+@staff_member_required
+def enviar_pedido(request, pedido_id):
+    pedido = get_object_or_404(Pedido, id=pedido_id)
+
+    if request.method == 'POST':
+        tracking = request.POST.get('tracking_id')
+        pedido.estado = 'enviado'
+        pedido.tracking_id = tracking
+        pedido.save()
+        
+        messages.success(request, f"Pedido #{pedido.id} marcado como enviado.")
+        return redirect('lista_pedidos')
+    
+    return render(request, 'catalogo/form_envio.html', {'pedido': pedido})

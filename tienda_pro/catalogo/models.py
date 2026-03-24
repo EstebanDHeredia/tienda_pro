@@ -66,8 +66,11 @@ class ImagenProducto(models.Model):
 class Pedido(models.Model):
     # Opciones para el estado del pedido
     ESTADOS = (
-        ('pendiente', 'Pendiente de Pago'),
+        ('pendiente', 'Pendiente'),
         ('pagado', 'Pagado'),
+        ('preparacion', 'En Preparación'),
+        ('enviado', 'Enviado'),
+        ('entregado', 'Entregado'),
         ('cancelado', 'Cancelado'),
     )
     
@@ -84,6 +87,7 @@ class Pedido(models.Model):
     estado = models.CharField(max_length=20, choices=ESTADOS, default='pendiente')
     cupon = models.ForeignKey(Cupon, on_delete=models.SET_NULL, null=True, blank=True)
     descuento_aplicado = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    tracking_id = models.CharField(max_length=100, blank=True, null=True, verbose_name="Número de Seguimiento")
 
     class Meta:
         ordering = ['-fecha']

@@ -26,6 +26,15 @@
             <a href="{% url 'lista_pedidos' %}?estado=pagado" class="filtro-btn {% if request.GET.estado == 'pagado' %}active{% endif %} pagado">
                 <span class="filtro-icon">✅</span> Pagados
             </a>
+            <a href="{% url 'lista_pedidos' %}?estado=preparacion" class="filtro-btn {% if request.GET.estado == 'preparacion' %}active{% endif %} preparacion">
+                <span class="filtro-icon">📦</span> Preparación
+            </a>
+            <a href="{% url 'lista_pedidos' %}?estado=enviado" class="filtro-btn {% if request.GET.estado == 'enviado' %}active{% endif %} enviado">
+                <span class="filtro-icon">🚚</span> Enviados
+            </a>
+            <a href="{% url 'lista_pedidos' %}?estado=entregado" class="filtro-btn {% if request.GET.estado == 'entregado' %}active{% endif %} entregado">
+                <span class="filtro-icon">🎉</span> Entregados
+            </a>
             <a href="{% url 'lista_pedidos' %}?estado=cancelado" class="filtro-btn {% if request.GET.estado == 'cancelado' %}active{% endif %} cancelado">
                 <span class="filtro-icon">❌</span> Cancelados
             </a>
@@ -76,7 +85,12 @@
                     </td>
                     <td class="text-center">
                         <span class="badge badge-{{ pedido.estado }}">
-                            {% if pedido.estado == 'pendiente' %}⏳{% elif pedido.estado == 'pagado' %}✅{% else %}❌{% endif %}
+                            {% if pedido.estado == 'pendiente' %}⏳
+                            {% elif pedido.estado == 'pagado' %}✅
+                            {% elif pedido.estado == 'preparacion' %}📦
+                            {% elif pedido.estado == 'enviado' %}🚚
+                            {% elif pedido.estado == 'entregado' %}🎉
+                            {% else %}❌{% endif %}
                             {{ pedido.get_estado_display }}
                         </span>
                     </td>
@@ -87,12 +101,35 @@
                                     <span>✓</span> Pagar
                                 </a>
                             {% endif %}
-                            {% if pedido.estado != 'cancelado' %}
+                            
+                            {% if pedido.estado == 'pagado' %}
+                                <a href="{% url 'cambiar_estado' pedido.id 'preparacion' %}" class="btn-accion btn-preparacion" title="Pasar a preparación">
+                                    <span>📦</span> Prep
+                                </a>
+                                <a href="#" onclick="abrirModalEnvio('{% url 'enviar_pedido' pedido.id %}', {{ pedido.id }}, '{{ pedido.nombre }} {{ pedido.apellido }}'); return false;" class="btn-accion btn-envio" title="Enviar pedido">
+                                    <span>🚚</span>
+                                </a>
+                            {% endif %}
+                            
+                            {% if pedido.estado == 'preparacion' %}
+                                <a href="#" onclick="abrirModalEnvio('{% url 'enviar_pedido' pedido.id %}', {{ pedido.id }}, '{{ pedido.nombre }} {{ pedido.apellido }}'); return false;" class="btn-accion btn-envio" title="Enviar pedido">
+                                    <span>🚚</span> Enviar
+                                </a>
+                            {% endif %}
+                            
+                            {% if pedido.estado == 'enviado' %}
+                                <a href="{% url 'cambiar_estado' pedido.id 'entregado' %}" class="btn-accion btn-entregado" title="Marcar como entregado">
+                                    <span>🎉</span> Entregar
+                                </a>
+                            {% endif %}
+                            
+                            {% if pedido.estado != 'cancelado' and pedido.estado != 'entregado' %}
                                 <a href="{% url 'cambiar_estado' pedido.id 'cancelado' %}" class="btn-accion btn-danger" title="Cancelar pedido">
                                     <span>✕</span>
                                 </a>
                             {% endif %}
-                            <a href="{{ pedido.whatsapp_url }}" target="_blank" class="btn-whatsapp-float" title="Enviar recordatorio por WhatsApp">
+                            
+                            <a href="{{ pedido.whatsapp_url }}" target="_blank" class="btn-whatsapp-float" title="Enviar WhatsApp">
                                 <span>💬</span>
                             </a>
                         </div>
@@ -368,9 +405,59 @@
         color: #1e8449;
     }
 
+    .badge-preparacion {
+        background: #e8f4fd;
+        color: #2980b9;
+    }
+
+    .badge-enviado {
+        background: #f5eef8;
+        color: #8e44ad;
+    }
+
+    .badge-entregado {
+        background: #d4edda;
+        color: #155724;
+    }
+
     .badge-cancelado {
         background: #fadbd8;
         color: #c0392b;
+    }
+
+    .btn-preparacion {
+        background: #e8f4fd;
+        color: #2980b9;
+    }
+
+    .btn-preparacion:hover {
+        background: #2980b9;
+        color: white;
+    }
+
+    .btn-entregado {
+        background: #d4edda;
+        color: #155724;
+    }
+
+    .btn-entregado:hover {
+        background: #155724;
+        color: white;
+    }
+
+    .filtro-btn.preparacion.active {
+        background: #2980b9;
+        border-color: #2980b9;
+    }
+
+    .filtro-btn.enviado.active {
+        background: #8e44ad;
+        border-color: #8e44ad;
+    }
+
+    .filtro-btn.entregado.active {
+        background: #155724;
+        border-color: #155724;
     }
 
     .acciones {
@@ -484,5 +571,224 @@
             justify-content: center;
         }
     }
+
+    .btn-envio {
+        background: #9b59b6;
+        color: white;
+    }
+
+    .btn-envio:hover {
+        background: #8e44ad;
+    }
+
+    .modal-overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
+        display: none;
+        justify-content: center;
+        align-items: center;
+        z-index: 9999;
+        backdrop-filter: blur(3px);
+    }
+
+    .modal-overlay.active {
+        display: flex;
+    }
+
+    .modal-content {
+        background: white;
+        border-radius: 20px;
+        padding: 35px;
+        max-width: 450px;
+        width: 90%;
+        position: relative;
+        animation: modalSlideIn 0.3s ease;
+        box-shadow: 0 25px 50px rgba(0,0,0,0.3);
+    }
+
+    @keyframes modalSlideIn {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    .modal-close {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: none;
+        border: none;
+        font-size: 1.5rem;
+        cursor: pointer;
+        color: #95a5a6;
+        transition: color 0.2s;
+    }
+
+    .modal-close:hover {
+        color: #e74c3c;
+    }
+
+    .modal-title {
+        margin: 0 0 10px 0;
+        color: #2c3e50;
+        font-size: 1.4rem;
+    }
+
+    .modal-subtitle {
+        color: #7f8c8d;
+        margin-bottom: 25px;
+    }
+
+    .form-group {
+        margin-bottom: 20px;
+    }
+
+    .form-group label {
+        display: block;
+        margin-bottom: 8px;
+        font-weight: 600;
+        color: #2c3e50;
+    }
+
+    .form-group input {
+        width: 100%;
+        padding: 14px;
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        font-size: 1rem;
+        transition: border-color 0.2s;
+        box-sizing: border-box;
+    }
+
+    .form-group input:focus {
+        outline: none;
+        border-color: #9b59b6;
+    }
+
+    .modal-actions {
+        display: flex;
+        gap: 12px;
+    }
+
+    .modal-actions button,
+    .modal-actions a {
+        flex: 1;
+        padding: 14px;
+        border-radius: 10px;
+        font-weight: 600;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s;
+        text-decoration: none;
+    }
+
+    .btn-cancel-modal {
+        background: #f0f2f5;
+        color: #555;
+        border: none;
+    }
+
+    .btn-cancel-modal:hover {
+        background: #e0e2e5;
+    }
+
+    .btn-submit-modal {
+        background: linear-gradient(135deg, #27ae60, #1e8449);
+        color: white;
+        border: none;
+        box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+    }
+
+    .btn-submit-modal:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+    }
+
+    .modal-loading {
+        text-align: center;
+        padding: 40px;
+        color: #7f8c8d;
+    }
 </style>
+
+<!-- Modal de Envío -->
+<div id="modal-envio" class="modal-overlay">
+    <div class="modal-content">
+        <button class="modal-close" onclick="cerrarModalEnvio()">✕</button>
+        <h2 class="modal-title">📦 Despachar Pedido</h2>
+        <p class="modal-subtitle" id="modal-pedido-info">Cargando...</p>
+        
+        <form method="POST" id="form-envio" onsubmit="enviarFormulario(event)">
+            {% csrf_token %}
+            <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+            <div class="form-group">
+                <label for="tracking_id">Número de Seguimiento (Tracking ID)</label>
+                <input type="text" name="tracking_id" id="tracking_id" required placeholder="Ej: AB123456789AR">
+            </div>
+            <div class="modal-actions">
+                <button type="button" class="btn-cancel-modal" onclick="cerrarModalEnvio()">Cancelar</button>
+                <button type="submit" class="btn-submit-modal">Confirmar Envío</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+let urlEnvioActual = '';
+
+function abrirModalEnvio(url, pedidoId, clienteNombre) {
+    urlEnvioActual = url;
+    document.getElementById('modal-pedido-info').innerHTML = 'Pedido <strong>#' + pedidoId + '</strong> - ' + clienteNombre;
+    document.getElementById('tracking_id').value = '';
+    document.getElementById('modal-envio').classList.add('active');
+}
+
+function cerrarModalEnvio() {
+    document.getElementById('modal-envio').classList.remove('active');
+}
+
+function enviarFormulario(e) {
+    e.preventDefault();
+    
+    const form = document.getElementById('form-envio');
+    const formData = new FormData(form);
+    
+    fetch(urlEnvioActual, {
+        method: 'POST',
+        body: formData,
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            cerrarModalEnvio();
+            location.reload();
+        } else {
+            alert('Error: ' + data.message);
+        }
+    })
+    .catch(error => {
+        // Si no es JSON, recargamos la página
+        location.reload();
+    });
+}
+
+// Cerrar modal al hacer click fuera
+document.getElementById('modal-envio').addEventListener('click', function(e) {
+    if (e.target === this) {
+        cerrarModalEnvio();
+    }
+});
+</script>
 {% endblock %}

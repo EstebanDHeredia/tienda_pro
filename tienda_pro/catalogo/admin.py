@@ -75,7 +75,7 @@ class PedidoAdmin(admin.ModelAdmin):
     
     total_final.short_description = 'Total Final'
         
-    list_display = ['id', 'nombre', 'apellido', 'fecha', 'mostrar_cupon', 'descuento_aplicado', 'total', 'colorear_estado']
+    list_display = ['id', 'nombre', 'apellido', 'fecha', 'mostrar_cupon', 'descuento_aplicado', 'total', 'colorear_estado', 'tracking_id']
 
     search_fields = ['nombre', 'apellido', 'id']
     
@@ -97,7 +97,7 @@ class PedidoAdmin(admin.ModelAdmin):
             'classes': ('wide',),
         }),
         ('Estado y Totales', {
-            'fields': ('estado', 'total'),
+            'fields': ('estado', 'total', 'tracking_id'),
             'description': 'Recuerda que al cambiar a <b>Pagado</b> se descontará el stock.'
         }),
     )

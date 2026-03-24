@@ -1,69 +1,495 @@
 {% extends 'catalogo/base.html' %}
 
-{% block content %}
-<div class="historial-container" style="max-width: 1000px; margin: 40px auto; padding: 0 20px;">
-    <header style="margin-bottom: 30px; border-bottom: 2px solid #eee; padding-bottom: 10px;">
-        <h1>🛍️ Mis Compras</h1>
-        <p>Hola <strong>{{ user.username }}</strong>, aquí puedes ver el estado de tus pedidos.</p>
-    </header>
+{% block title %}Mis Compras - Mi Tienda{% endblock %}
 
-    {% if pedidos %}
-        <div style="overflow-x: auto; background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.1);">
-            <table style="width: 100%; border-collapse: collapse; text-align: left;">
-                <thead style="background: #f8f9fa;">
-                    <tr>
-                        <th style="padding: 15px; border-bottom: 2px solid #dee2e6;">Pedido</th>
-                        <th style="padding: 15px; border-bottom: 2px solid #dee2e6;">Fecha</th>
-                        <th style="padding: 15px; border-bottom: 2px solid #dee2e6;">Estado</th>
-                        <th style="padding: 15px; border-bottom: 2px solid #dee2e6;">Total</th>
-                        <th style="padding: 15px; border-bottom: 2px solid #dee2e6;">Detalle</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for p in pedidos %}
-                    <tr>
-                        <td style="padding: 15px; border-bottom: 1px solid #eee;">#{{ p.id }}</td>
-                        <td style="padding: 15px; border-bottom: 1px solid #eee;">{{ p.fecha|date:"d/m/Y H:i" }}</td>
-                        <td style="padding: 15px; border-bottom: 1px solid #eee;">
-                            <span class="badge badge-{{ p.estado }}">
-                                {{ p.get_estado_display }}
-                            </span>
-                        </td>
-                        <td style="padding: 15px; border-bottom: 1px solid #eee; font-weight: bold;">
-                            ${{ p.total }}
-                        </td>
-                        <td style="padding: 15px; border-bottom: 1px solid #eee;">
-                            <ul style="margin: 0; padding-left: 15px; font-size: 0.85rem; color: #666;">
-                                {% for item in p.items.all %}
-                                    <li>{{ item.cantidad }}x {{ item.producto.nombre }}</li>
-                                {% endfor %}
-                            </ul>
-                        </td>
-                    </tr>
+{% block content %}
+<div class="historial-page">
+    <div class="historial-container">
+        <header class="historial-header">
+            <div class="header-info">
+                <h1>🛍️ Mis Compras</h1>
+                <p>Hola <strong>{{ user.username }}</strong>, aquí puedes seguir el estado de tus pedidos</p>
+            </div>
+            <a href="{% url 'lista' %}" class="btn-shop">
+                <span>🛒</span> Seguir Comprando
+            </a>
+        </header>
+
+        {% if pedidos %}
+        <div class="pedidos-list">
+            {% for p in pedidos %}
+            <div class="pedido-card">
+                <div class="pedido-header">
+                    <div class="pedido-info">
+                        <span class="pedido-id">Pedido #{{ p.id }}</span>
+                        <span class="pedido-fecha">{{ p.fecha|date:"d/m/Y • H:i" }}</span>
+                    </div>
+                    <span class="badge badge-{{ p.estado }}">
+                        {% if p.estado == 'pendiente' %}⏳{% elif p.estado == 'pagado' %}✅{% elif p.estado == 'preparacion' %}📦{% elif p.estado == 'enviado' %}🚚{% elif p.estado == 'entregado' %}🎉{% else %}❌{% endif %}
+                        {{ p.get_estado_display }}
+                    </span>
+                </div>
+
+                <div class="pedido-body">
+                    <div class="tracking-progress">
+                        <div class="progress-track">
+                            <div class="step {% if p.estado != 'cancelado' %}active{% endif %}">
+                                <div class="step-marker"></div>
+                                <span>Pendiente</span>
+                            </div>
+                            <div class="step-line {% if p.estado == 'pagado' or p.estado == 'preparacion' or p.estado == 'enviado' or p.estado == 'entregado' %}active{% endif %}"></div>
+                            <div class="step {% if p.estado == 'pagado' or p.estado == 'preparacion' or p.estado == 'enviado' or p.estado == 'entregado' %}active{% endif %}">
+                                <div class="step-marker"></div>
+                                <span>Pagado</span>
+                            </div>
+                            <div class="step-line {% if p.estado == 'preparacion' or p.estado == 'enviado' or p.estado == 'entregado' %}active{% endif %}"></div>
+                            <div class="step {% if p.estado == 'preparacion' or p.estado == 'enviado' or p.estado == 'entregado' %}active{% endif %}">
+                                <div class="step-marker"></div>
+                                <span>Preparación</span>
+                            </div>
+                            <div class="step-line {% if p.estado == 'enviado' or p.estado == 'entregado' %}active{% endif %}"></div>
+                            <div class="step {% if p.estado == 'enviado' or p.estado == 'entregado' %}active{% endif %}">
+                                <div class="step-marker"></div>
+                                <span>Enviado</span>
+                            </div>
+                            <div class="step-line {% if p.estado == 'entregado' %}active{% endif %}"></div>
+                            <div class="step {% if p.estado == 'entregado' %}active{% endif %}">
+                                <div class="step-marker"></div>
+                                <span>Entregado</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {% if p.estado == 'cancelado' %}
+                    <div class="canceled-notice">
+                        <span>⚠️</span> Este pedido fue cancelado
+                    </div>
+                    {% endif %}
+
+                    {% if p.estado == 'enviado' and p.tracking_id %}
+                    <div class="tracking-code">
+                        <div class="tracking-icon">🚚</div>
+                        <div class="tracking-info">
+                            <span class="tracking-label">Código de seguimiento</span>
+                            <span class="tracking-number">{{ p.tracking_id }}</span>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="pedido-footer">
+                    <div class="pedido-total">
+                        <span class="total-label">Total pagado</span>
+                        <span class="total-amount">${{ p.total|floatformat:2 }}</span>
+                    </div>
+                    <button class="btn-detalle" onclick="toggleDetalle({{ p.id }})">
+                        <span>📋</span> Ver Detalle
+                    </button>
+                </div>
+
+                <div class="pedido-detalle" id="detalle-{{ p.id }}">
+                    <h5>Productos del pedido</h5>
+                    {% for item in p.items.all %}
+                    <div class="item-detalle">
+                        <div class="item-info">
+                            <span class="item-nombre">{{ item.producto.nombre }}</span>
+                            <span class="item-cantidad">{{ item.cantidad }} x ${{ item.precio }}</span>
+                        </div>
+                        <span class="item-subtotal">${{ item.obtener_costo|floatformat:2 }}</span>
+                    </div>
                     {% endfor %}
-                </tbody>
-            </table>
+                </div>
+            </div>
+            {% endfor %}
         </div>
-    {% else %}
-        <div style="text-align: center; padding: 50px; background: #fdfdfd; border: 2px dashed #ccc; border-radius: 10px;">
-            <p style="font-size: 1.2rem; color: #888;">Todavía no has realizado ninguna compra.</p>
-            <a href="{% url 'lista' %}" class="btn-primario" style="display: inline-block; margin-top: 15px; text-decoration: none; background: #3498db; color: white; padding: 10px 20px; border-radius: 5px;">
-                Ir a la tienda
+        {% else %}
+        <div class="empty-state">
+            <div class="empty-icon">🛒</div>
+            <h2>Aún no tienes pedidos</h2>
+            <p>¡Explora nuestro catálogo y encuentra productos increíbles!</p>
+            <a href="{% url 'lista' %}" class="btn-shop-large">
+                <span>🛍️</span> Ir a la Tienda
             </a>
         </div>
-    {% endif %}
+        {% endif %}
+    </div>
 </div>
 
-<style>
-    /* Estilos para los estados */
-    .badge {
-        padding: 5px 12px;
-        border-radius: 20px;
-        font-size: 0.8rem;
-        font-weight: bold;
+<script>
+function toggleDetalle(pedidoId) {
+    const detalle = document.getElementById('detalle-' + pedidoId);
+    if (detalle.style.display === 'none' || detalle.style.display === '') {
+        detalle.style.display = 'block';
+    } else {
+        detalle.style.display = 'none';
     }
-    .badge-pendiente { background-color: #fff3cd; color: #856404; }
-    .badge-pagado { background-color: #d4edda; color: #155724; }
-    .badge-cancelado { background-color: #f8d7da; color: #721c24; }
+}
+</script>
+
+<style>
+.historial-page {
+    min-height: 100vh;
+    background: #f0f2f5;
+    padding: 30px 20px;
+}
+
+.historial-container {
+    max-width: 900px;
+    margin: 0 auto;
+}
+
+.historial-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 30px;
+    background: white;
+    padding: 25px 30px;
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
+
+.header-info h1 {
+    margin: 0 0 5px 0;
+    color: #1a1a2e;
+    font-size: 1.6rem;
+}
+
+.header-info p {
+    margin: 0;
+    color: #7f8c8d;
+    font-size: 0.9rem;
+}
+
+.btn-shop {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 24px;
+    background: #3498db;
+    color: white;
+    text-decoration: none;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.btn-shop:hover {
+    background: #2980b9;
+    transform: translateY(-2px);
+}
+
+.pedidos-list {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.pedido-card {
+    background: white;
+    border-radius: 16px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
+
+.pedido-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    background: #f8f9fa;
+    border-bottom: 1px solid #eee;
+}
+
+.pedido-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.pedido-id {
+    font-weight: 700;
+    color: #2c3e50;
+    font-size: 1.1rem;
+}
+
+.pedido-fecha {
+    font-size: 0.85rem;
+    color: #7f8c8d;
+    margin-top: 4px;
+}
+
+.badge {
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.badge-pendiente { background: #fef9e7; color: #b7950b; }
+.badge-pagado { background: #d5f4e6; color: #1e8449; }
+.badge-preparacion { background: #e8f4fd; color: #2980b9; }
+.badge-enviado { background: #f5eef8; color: #8e44ad; }
+.badge-entregado { background: #d4edda; color: #155724; }
+.badge-cancelado { background: #fadbd8; color: #c0392b; }
+
+.pedido-body {
+    padding: 25px;
+}
+
+.tracking-progress h4 {
+    margin: 0 0 20px 0;
+    color: #2c3e50;
+    font-size: 0.9rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.progress-track {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+}
+
+.step-marker {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #f0f2f5;
+    border: 3px solid #dfe6e9;
+    transition: all 0.3s;
+}
+
+.step span {
+    font-size: 0.7rem;
+    color: #b2bec3;
+    text-align: center;
+}
+
+.step.active .step-marker {
+    background: #3498db;
+    border-color: #3498db;
+}
+
+.step.active span {
+    color: #2c3e50;
+    font-weight: 600;
+}
+
+.step-line {
+    flex: 0.5;
+    height: 3px;
+    background: #dfe6e9;
+    transition: background 0.3s;
+}
+
+.step-line.active {
+    background: #3498db;
+}
+
+.canceled-notice {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-top: 20px;
+    padding: 15px;
+    background: #fef2f2;
+    border-radius: 10px;
+    color: #c0392b;
+    font-weight: 500;
+}
+
+.tracking-code {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    margin-top: 20px;
+    padding: 15px 20px;
+    background: linear-gradient(135deg, #f5f7fa, #e8ecf1);
+    border-radius: 12px;
+    border-left: 4px solid #3498db;
+}
+
+.tracking-icon {
+    font-size: 1.5rem;
+}
+
+.tracking-label {
+    display: block;
+    font-size: 0.75rem;
+    color: #7f8c8d;
+    text-transform: uppercase;
+}
+
+.tracking-number {
+    font-weight: 700;
+    color: #2c3e50;
+    font-size: 1.1rem;
+    letter-spacing: 1px;
+}
+
+.pedido-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 25px;
+    border-top: 1px solid #eee;
+    background: #fafbfc;
+}
+
+.pedido-total {
+    display: flex;
+    flex-direction: column;
+}
+
+.total-label {
+    font-size: 0.8rem;
+    color: #7f8c8d;
+}
+
+.total-amount {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #2c3e50;
+}
+
+.btn-detalle {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 20px;
+    background: white;
+    border: 2px solid #3498db;
+    color: #3498db;
+    border-radius: 10px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-detalle:hover {
+    background: #3498db;
+    color: white;
+}
+
+.pedido-detalle {
+    padding: 0 25px 25px;
+    border-top: 1px dashed #eee;
+    margin-top: 0;
+    display: none;
+}
+
+.pedido-detalle h5 {
+    margin: 20px 0 15px 0;
+    color: #2c3e50;
+}
+
+.item-detalle {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    border-bottom: 1px solid #f5f5f5;
+}
+
+.item-detalle:last-child {
+    border-bottom: none;
+}
+
+.item-info {
+    display: flex;
+    flex-direction: column;
+}
+
+.item-nombre {
+    font-weight: 500;
+    color: #2c3e50;
+}
+
+.item-cantidad {
+    font-size: 0.85rem;
+    color: #7f8c8d;
+}
+
+.item-subtotal {
+    font-weight: 600;
+    color: #2c3e50;
+}
+
+.empty-state {
+    text-align: center;
+    padding: 60px 30px;
+    background: white;
+    border-radius: 20px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.05);
+}
+
+.empty-icon {
+    font-size: 5rem;
+    margin-bottom: 20px;
+}
+
+.empty-state h2 {
+    margin: 0 0 10px 0;
+    color: #2c3e50;
+}
+
+.empty-state p {
+    margin: 0 0 25px 0;
+    color: #7f8c8d;
+}
+
+.btn-shop-large {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 32px;
+    background: linear-gradient(135deg, #3498db, #2980b9);
+    color: white;
+    text-decoration: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 1.1rem;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(52, 152, 219, 0.3);
+}
+
+.btn-shop-large:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 25px rgba(52, 152, 219, 0.4);
+}
+
+@media (max-width: 768px) {
+    .historial-header {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
+    }
+
+    .progress-track {
+        flex-wrap: wrap;
+    }
+
+    .step-line {
+        display: none;
+    }
+
+    .step {
+        flex: 0 0 25%;
+    }
+
+    .pedido-footer {
+        flex-direction: column;
+        gap: 15px;
+        text-align: center;
+    }
+}
 </style>
 {% endblock %}
