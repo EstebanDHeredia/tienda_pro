@@ -80,6 +80,7 @@ class Pedido(models.Model):
     telefono = models.CharField(max_length=20)
     direccion = models.CharField(max_length=200)
     usuario = models.ForeignKey(User, on_delete=models.SET_NULL, related_name='pedidos', null=True, blank=True)
+    email = models.EmailField(verbose_name="Correo electrónico")
 
     # Datos del pedido
     fecha = models.DateTimeField(auto_now_add=True)

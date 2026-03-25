@@ -24,7 +24,12 @@ from django.contrib.admin.views.decorators import staff_member_required
 from django.db.models import F
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.forms import UserCreationForm
+from .forms import RegistroForm
 from django.contrib.auth import login
+from django.http import HttpResponse
+from django.template.loader import get_template
+from xhtml2pdf import pisa
+
 
 
 # =============================================================================
@@ -333,7 +338,10 @@ def pedido_crear(request):
 
             # Si hay un usuario logueado, lo guardo dentro del pedido
             if request.user.is_authenticated:
-                pedido.usuario = request.user            
+                pedido.usuario = request.user
+            
+            # Para el pedido uso el email que me envia el formulario
+            pedido.email=form.cleaned_data['email']            
             
             # Usar total CON descuento
             pedido.total = carrito.total_con_descuento
@@ -368,7 +376,10 @@ def pedido_crear(request):
             
             return redirect('pedido_confirmado')
     else:
-        form = PedidoCreateForm()
+        initial_data = {}
+        if request.user.is_authenticated:
+            initial_data['email'] = request.user.email
+        form = PedidoCreateForm(initial=initial_data)
         
     return render(request, 'catalogo/checkout.html', {'carrito': carrito, 'form': form})
 
@@ -591,7 +602,6 @@ def lista_pedidos(request):
             f"¡Muchas gracias por tu compra!"
         )
         p.whatsapp_url = f"https://wa.me/{p.telefono}?text={quote(texto)}"
-        print(f"DEBUG: {p.whatsapp_url}")
     
     return render(request, 'catalogo/lista_pedidos.html', {
         'filtro_estado': filtro_estado,
@@ -705,13 +715,13 @@ def historial_pedidos(request):
 
     return render(request, 'catalogo/historial.html', {'pedidos': mis_pedidos}) 
 
-def registro (request):
+def registro(request):
     """
     Vista para crear un nuevo usuario.
     
     Proceso:
     1. GET: Muestra el formulario de registro vacío
-    2. POST: Valida datos, crea el usuario y loguea automáticamente
+    2. POST: Valida datos, crea el usuario con email y loguea automáticamente
     
     Returns:
         Redirect a lista (de productos - tienda)
@@ -720,14 +730,14 @@ def registro (request):
         - Éxito: '¡Bienvenido {user.username}! Tu cuenta ha sido creada.'
     """
     if request.method == 'POST':
-        form = UserCreationForm(request.POST)
+        form = RegistroForm(request.POST)
         if form.is_valid():
-            user = form.save() # Guardo el usr en la BD
-            login(request, user) # Logueo automaticamente al usr
+            user = form.save()
+            login(request, user)
             messages.success(request, f'¡Bienvenido {user.username}! Tu cuenta ha sido creada.')
             return redirect('lista')
     else:
-        form = UserCreationForm()
+        form = RegistroForm()
     
     return render(request, 'registration/registro.html', {'form': form})
 
@@ -781,3 +791,24 @@ def enviar_pedido(request, pedido_id):
         return redirect('lista_pedidos')
     
     return render(request, 'catalogo/form_envio.html', {'pedido': pedido})
+
+@login_required
+def descargar_factura_pdf(request, pedido_id):
+    pedido = get_object_or_404(Pedido, id=pedido_id, usuario=request.user)
+
+    template_path = 'catalogo/pdf/factura.html'
+    context = {'pedido': pedido}
+
+    response = HttpResponse(content_type='application/pdf')
+    response['Content-Disposition'] = f'attachment; filename="factura_{pedido.id}.pdf"'
+
+    template = get_template(template_path)
+    html = template.render(context)
+
+    pisa_status = pisa.CreatePDF(html, dest=response)   
+
+    if pisa_status.err:
+        print(f"Error en PISA: {pisa_status.err}")
+        return HttpResponse('Tuvimos algunos errores al crear el PDF <pre>' + html + '</pre>')
+    
+    return response

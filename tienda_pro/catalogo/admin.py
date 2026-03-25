@@ -89,7 +89,7 @@ class PedidoAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('Información del Cliente', {
-            'fields': ('usuario', 'nombre', 'apellido', 'telefono', 'direccion'),
+            'fields': ('usuario', 'nombre', 'apellido', 'telefono', 'direccion', 'email'),
             'classes': ('wide',),
         }),
         ('Cupón Aplicado', {

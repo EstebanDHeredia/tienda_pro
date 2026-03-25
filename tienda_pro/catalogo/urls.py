@@ -5,7 +5,7 @@ from .views import (ListaProductosView, DetalleProductoView, agregar_producto,
                     restar_item, pedido_crear, pedido_confirmado, dashboard_ventas,
                     lista_pedidos, cambiar_estado_pedido, aplicar_cupon, 
                     eliminar_cupon, historial_pedidos, registro, agregar_comentario,
-                    enviar_pedido)
+                    enviar_pedido, descargar_factura_pdf)
 
 urlpatterns = [
     path('', ListaProductosView.as_view(), name='lista'),
@@ -28,6 +28,6 @@ urlpatterns = [
     path('registro/', registro, name='registro'),
     path('producto/<int:producto_id>/comentar/', agregar_comentario, name='agregar_comentario'),
     path('pedidos/enviar/<int:pedido_id>/', enviar_pedido, name='enviar_pedido'),
-    
+    path('pedidos/factura/<int:pedido_id>/', descargar_factura_pdf, name='descargar_factura'),
 ]
 

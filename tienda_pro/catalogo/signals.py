@@ -17,6 +17,8 @@ from django.dispatch import receiver
 from .models import Pedido, DetallePedido
 from django.db.models import F
 from decimal import Decimal
+from django.core.mail import send_mail
+from django.conf import settings
 
 
 # =============================================================================
@@ -215,3 +217,31 @@ def aumentar_uso_cupon(sender, instance, **kwargs):
                     
         except Pedido.DoesNotExist:
             pass
+
+@receiver(post_save, sender = Pedido)
+def notificar_envio_cliente(sender, instance, created, **kwargs):
+    if not created: # Si es un pedido nuevo no voy a mandar un mail de despacho
+        # Controlo si estado es 'enviado' y si tiene tracking id
+        if instance.estado == 'enviado' and instance.tracking_id:
+            email_destino = instance.email # El mail lo envío al email registrado en el pedido
+            
+            if email_destino:
+                asunto = f"📦 ¡Tu pedido #{instance.id} está en camino!"
+                mensaje = (
+                    f"Hola {instance.nombre}, \n\n"
+                    f"¡Buenas noticias! Tu pedido ya ha sido despachado.\n\n"
+                    f"🚚 Número de Seguimiento: {instance.tracking_id}\n\n"
+                    f"Puedes seguirlo desde tu historial de compras en nuestra web.\n\n"
+                    f"Gracias por elegirnos."
+                )
+                
+                try:
+                    send_mail(
+                        asunto,
+                        mensaje,
+                        settings.EMAIL_HOST_USER,
+                        [email_destino],
+                        fail_silently=False,
+                    )
+                except Exception as e:
+                    print(f"Error enviando email: {e}")

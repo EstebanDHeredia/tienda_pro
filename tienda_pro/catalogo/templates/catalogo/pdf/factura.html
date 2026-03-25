@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        @page { size: a4 portrait; margin: 2cm; }
+        body { font-family: Helvetica, sans-serif; color: #333; }
+        .header { text-align: center; border-bottom: 2px solid #3498db; padding-bottom: 20px; }
+        .info-seccion { margin-top: 30px; }
+        .tabla { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        .tabla th { background-color: #f2f2f2; padding: 10px; text-align: left; border-bottom: 1px solid #ddd; }
+        .tabla td { padding: 10px; border-bottom: 1px solid #eee; }
+        .total-seccion { text-align: right; margin-top: 30px; font-size: 1.2em; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>FACTURA DE COMPRA</h1>
+        <p>Pedido #{{ pedido.id }} | Fecha: {{ pedido.fecha|date:"d/m/Y" }}</p>
+    </div>
+
+    <div class="info-seccion">
+        <p><strong>Cliente:</strong> {{ pedido.nombre }} {{ pedido.apellido }}</p>
+        <p><strong>Email:</strong> {{ pedido.email }}</p>
+        <p><strong>Dirección:</strong> {{ pedido.direccion }}</p>
+    </div>
+
+    <table class="tabla">
+        <thead>
+            <tr>
+                <th>Producto</th>
+                <th>Precio Unit.</th>
+                <th>Cant.</th>
+                <th>Subtotal</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in pedido.items.all %}
+            <tr>
+                <td>{{ item.producto.nombre }}</td>
+                <td>${{ item.precio }}</td>
+                <td>{{ item.cantidad }}</td>
+                <td>${{ item.obtener_costo }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="total-seccion">
+        {% if pedido.cupon %}
+            <p>Subtotal: ${{ pedido.total|add:pedido.descuento_aplicado }}</p>
+            <p>Descuento ({{ pedido.cupon.codigo }}): -${{ pedido.descuento_aplicado }}</p>
+        {% endif %}
+        <p><strong>TOTAL PAGADO: ${{ pedido.total }}</strong></p>
+    </div>
+</body>
+</html>

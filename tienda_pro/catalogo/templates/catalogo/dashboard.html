@@ -23,21 +23,21 @@
                 <div class="stat-icon">💰</div>
                 <div class="stat-content">
                     <span class="stat-label">Ventas Totales</span>
-                    <span class="stat-value">${{ total_recaudado|floatformat:2 }}</span>
+                    <span class="stat-value currency-value" data-value="{{ total_recaudado }}">${{ total_recaudado|floatformat:2 }}</span>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon">📅</div>
                 <div class="stat-content">
                     <span class="stat-label">Últimos 7 Días</span>
-                    <span class="stat-value text-blue">${{ ventas_recientes|floatformat:2 }}</span>
+                    <span class="stat-value text-blue currency-value" data-value="{{ ventas_recientes }}">${{ ventas_recientes|floatformat:2 }}</span>
                 </div>
             </div>
             <div class="stat-card">
                 <div class="stat-icon">🎫</div>
                 <div class="stat-content">
                     <span class="stat-label">Ticket Promedio</span>
-                    <span class="stat-value text-purple">${{ ticket_promedio|stringformat:".2f" }}</span>
+                    <span class="stat-value text-purple currency-value" data-value="{{ ticket_promedio }}">${{ ticket_promedio|floatformat:2 }}</span>
                 </div>
             </div>
         </div>
@@ -49,7 +49,7 @@
             <div class="stat-card highlight-green">
                 <div class="stat-content">
                     <span class="stat-label">Inversión en Descuentos</span>
-                    <span class="stat-value text-green">-${{ total_descuentos|stringformat:".2f" }}</span>
+                    <span class="stat-value text-green currency-value" data-value="{{ total_descuentos }}">${{ total_descuentos|floatformat:2 }}</span>
                 </div>
             </div>
             <div class="stat-card">
@@ -155,7 +155,7 @@
                 </div>
                 <div class="star-info">
                     <h2>{{ producto_estrella.producto__nombre }}</h2>
-                    <p class="star-revenue">Recaudación: <strong>${{ producto_estrella.total_recaudado_prod|floatformat:2 }}</strong></p>
+                    <p class="star-revenue">Recaudación: <strong class="currency-value" data-value="{{ producto_estrella.total_recaudado_prod }}">${{ producto_estrella.total_recaudado_prod|floatformat:2 }}</strong></p>
                 </div>
                 {% if producto_estrella.producto__stock < 10 %}
                 <div class="stock-alert">
@@ -191,6 +191,18 @@
 </div>
 
 <script>
+function formatCurrency(value) {
+    if (value === null || value === undefined) return '$ 0,00';
+    return '$ ' + value.toLocaleString('es-AR', {minimumFractionDigits: 2, maximumFractionDigits: 2});
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.currency-value').forEach(function(el) {
+        var value = parseFloat(el.getAttribute('data-value'));
+        el.textContent = formatCurrency(value);
+    });
+});
+
 document.addEventListener('DOMContentLoaded', function() {
     const chartLine = document.getElementById('graficoLinea').getContext('2d');
     new Chart(chartLine, {

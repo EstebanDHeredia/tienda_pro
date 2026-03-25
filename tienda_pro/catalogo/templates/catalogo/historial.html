@@ -28,6 +28,11 @@
                         {% if p.estado == 'pendiente' %}⏳{% elif p.estado == 'pagado' %}✅{% elif p.estado == 'preparacion' %}📦{% elif p.estado == 'enviado' %}🚚{% elif p.estado == 'entregado' %}🎉{% else %}❌{% endif %}
                         {{ p.get_estado_display }}
                     </span>
+                    {% if p.estado == 'pagado' or p.estado == 'preparacion' or p.estado == 'enviado' or p.estado == 'entregado' %}
+                        <a href="{% url 'descargar_factura' p.id %}" class="btn-pdf">
+                            📄 Descargar Factura (PDF)
+                        </a>
+                    {% endif %}
                 </div>
 
                 <div class="pedido-body">
@@ -71,10 +76,22 @@
                         <div class="tracking-icon">🚚</div>
                         <div class="tracking-info">
                             <span class="tracking-label">Código de seguimiento</span>
-                            <span class="tracking-number">{{ p.tracking_id }}</span>
+                            <span class="tracking-number" id="tracking-{{ p.id }}">{{ p.tracking_id }}</span>
                         </div>
+                        <button class="btn-copy" onclick="copiarTracking('{{ p.tracking_id }}', {{ p.id }})" title="Copiar código">
+                            📋
+                        </button>
                     </div>
                     {% endif %}
+
+                    <div class="direccion-section">
+                        <button class="btn-direccion" onclick="toggleDireccion({{ p.id }})">
+                            <span>📍</span> Ver Dirección de Entrega
+                        </button>
+                        <div class="direccion-box" id="direccion-{{ p.id }}" style="display: none;">
+                            <p>{{ p.direccion }}</p>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="pedido-footer">
@@ -122,6 +139,30 @@ function toggleDetalle(pedidoId) {
         detalle.style.display = 'block';
     } else {
         detalle.style.display = 'none';
+    }
+}
+
+function copiarTracking(codigo, pedidoId) {
+    navigator.clipboard.writeText(codigo).then(function() {
+        const btn = document.querySelector('#tracking-' + pedidoId).parentElement.nextElementSibling;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '✓ Copiado';
+        btn.style.background = '#27ae60';
+        btn.style.color = 'white';
+        setTimeout(function() {
+            btn.innerHTML = originalText;
+            btn.style.background = '';
+            btn.style.color = '';
+        }, 2000);
+    });
+}
+
+function toggleDireccion(pedidoId) {
+    const direccion = document.getElementById('direccion-' + pedidoId);
+    if (direccion.style.display === 'none' || direccion.style.display === '') {
+        direccion.style.display = 'block';
+    } else {
+        direccion.style.display = 'none';
     }
 }
 </script>
@@ -315,6 +356,60 @@ function toggleDetalle(pedidoId) {
     background: linear-gradient(135deg, #f5f7fa, #e8ecf1);
     border-radius: 12px;
     border-left: 4px solid #3498db;
+}
+
+.btn-copy {
+    margin-left: auto;
+    padding: 8px 12px;
+    background: white;
+    border: 2px solid #3498db;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: all 0.2s;
+}
+
+.btn-copy:hover {
+    background: #3498db;
+    color: white;
+}
+
+.direccion-section {
+    margin-top: 15px;
+}
+
+.btn-direccion {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 16px;
+    background: white;
+    border: 2px solid #95a5a6;
+    border-radius: 8px;
+    color: #555;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+    font-size: 0.9rem;
+}
+
+.btn-direccion:hover {
+    background: #f8f9fa;
+    border-color: #7f8c8d;
+}
+
+.direccion-box {
+    margin-top: 10px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 8px;
+    border-left: 4px solid #95a5a6;
+}
+
+.direccion-box p {
+    margin: 0;
+    color: #2c3e50;
+    font-size: 0.9rem;
 }
 
 .tracking-icon {

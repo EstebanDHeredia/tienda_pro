@@ -24,34 +24,20 @@
                 <a href="{% url 'lista_pedidos' %}" class="nav-link nav-admin">
                     <span>📋</span> Pedidos
                 </a>
+                {% endif %}
+                {% if user.is_authenticated %}
                 <div class="user-menu">
                     <div class="user-info">
-                        <div class="user-avatar" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
-                            <span>{{ user.username|slice:":1"|upper }}</span>
-                        </div>
-                        <div class="user-details">
-                            <span class="user-name">{{ user.username }}</span>
-                            <span class="user-role">Administrador</span>
-                        </div>
-                    </div>
-                    <form action="{% url 'logout' %}" method="post" class="logout-form">
-                        {% csrf_token %}
-                        <button type="submit" class="btn-logout" title="Cerrar sesión">
-                            <span>🚪</span>
-                        </button>
-                    </form>
-                </div>
-                {% elif user.is_authenticated and not user.is_staff %}
-                <div class="user-menu">
-                    <div class="user-info">
-                        <div class="user-avatar">
+                        <div class="user-avatar" style="background: linear-gradient(135deg, {% if user.is_staff %}#e74c3c, #c0392b{% else %}#3498db, #2980b9{% endif %});">
                             <span>{{ user.username|slice:":1"|upper }}</span>
                         </div>
                         <div class="user-details">
                             <span class="user-name">Hola, {{ user.username }}</span>
-                            <a href="{% url 'historial' %}" class="user-compras">
-                                <span>🛍️</span> Mis Compras
-                            </a>
+                            {% if user.is_staff %}
+                            <span class="user-role">Administrador</span>
+                            {% else %}
+                            <a href="{% url 'historial' %}" class="user-compras">Mis Compras</a>
+                            {% endif %}
                         </div>
                     </div>
                     <form action="{% url 'logout' %}" method="post" class="logout-form">
